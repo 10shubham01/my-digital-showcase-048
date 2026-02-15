@@ -6,38 +6,40 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 92%;
+    --background: 220 15% 4%;
+    --foreground: 40 10% 92%;
 
-    --card: 0 0% 7%;
-    --card-foreground: 0 0% 92%;
+    --card: 220 12% 7%;
+    --card-foreground: 40 10% 92%;
 
-    --popover: 0 0% 7%;
-    --popover-foreground: 0 0% 92%;
+    --popover: 220 12% 7%;
+    --popover-foreground: 40 10% 92%;
 
-    --primary: 0 0% 92%;
-    --primary-foreground: 0 0% 4%;
+    --primary: 40 10% 92%;
+    --primary-foreground: 220 15% 4%;
 
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 80%;
+    --secondary: 220 10% 12%;
+    --secondary-foreground: 40 8% 75%;
 
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 220 8% 14%;
+    --muted-foreground: 220 5% 50%;
 
-    --accent: 40 6% 20%;
-    --accent-foreground: 40 20% 90%;
+    --accent: 25 80% 55%;
+    --accent-foreground: 25 10% 95%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 0 0% 40%;
+    --border: 220 8% 15%;
+    --input: 220 8% 15%;
+    --ring: 25 80% 55%;
 
     --radius: 0.5rem;
 
     --font-heading: 'Playfair Display', Georgia, serif;
     --font-body: 'Space Grotesk', system-ui, sans-serif;
+
+    --accent-glow: 25 90% 60%;
   }
 }
 
@@ -60,18 +62,46 @@
   }
 
   ::selection {
-    background: hsl(0 0% 30%);
-    color: hsl(0 0% 95%);
+    background: hsl(25 80% 55% / 0.3);
+    color: hsl(40 10% 95%);
   }
 }
 
 @layer utilities {
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(0 0% 95%), hsl(0 0% 55%));
+    background-image: linear-gradient(135deg, hsl(25 80% 55%), hsl(40 60% 70%));
+  }
+
+  .text-gradient-subtle {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(40 10% 95%), hsl(220 5% 50%));
   }
 
   .border-gradient {
-    border-image: linear-gradient(135deg, hsl(0 0% 25%), hsl(0 0% 10%)) 1;
+    border-image: linear-gradient(135deg, hsl(25 80% 55% / 0.4), hsl(220 8% 15%)) 1;
   }
+
+  .glow-accent {
+    box-shadow: 0 0 40px hsl(25 80% 55% / 0.15), 0 0 80px hsl(25 80% 55% / 0.05);
+  }
+}
+
+/* Marquee / pan animation for photo gallery */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marquee-reverse {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee-reverse {
+  animation: marquee-reverse 35s linear infinite;
 }

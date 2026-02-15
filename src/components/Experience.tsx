@@ -48,27 +48,28 @@ const ExperienceItem = ({
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6, delay: index * 0.15 }}
-      className="border-l border-border pl-8"
+      initial={{ opacity: 0, x: -40 }}
+      animate={isInView ? { opacity: 1, x: 0 } : {}}
+      transition={{ duration: 0.7, delay: index * 0.15, ease: [0.22, 1, 0.36, 1] }}
+      className="border-l-2 border-accent/30 pl-8 hover:border-accent transition-colors duration-500 group"
     >
-      <p className="text-xs font-body text-muted-foreground tracking-widest uppercase mb-2">
+      <p className="text-xs font-body text-accent tracking-widest uppercase mb-2">
         {period}
       </p>
-      <h3 className="font-heading text-xl md:text-2xl text-foreground mb-1">{role}</h3>
+      <h3 className="font-heading text-xl md:text-2xl text-foreground mb-1 group-hover:text-gradient transition-all duration-300">{role}</h3>
       <p className="text-sm font-body text-muted-foreground mb-4">{company}</p>
       <p className="text-sm font-body text-muted-foreground leading-relaxed mb-4">
         {description}
       </p>
       <div className="flex flex-wrap gap-2">
         {tech.map((t) => (
-          <span
+          <motion.span
             key={t}
-            className="text-xs font-body text-muted-foreground border border-border px-2.5 py-1"
+            whileHover={{ scale: 1.05 }}
+            className="text-xs font-body text-muted-foreground border border-border px-2.5 py-1 hover:border-accent/40 transition-colors"
           >
             {t}
-          </span>
+          </motion.span>
         ))}
       </div>
     </motion.div>
