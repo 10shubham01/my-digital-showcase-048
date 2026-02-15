@@ -11,6 +11,18 @@ const About = () => {
     "Node.js", "Tailwind CSS", "PostgreSQL", "AWS", "Git",
   ];
 
+  const containerVariants = {
+    hidden: {},
+    visible: {
+      transition: { staggerChildren: 0.05, delayChildren: 0.3 },
+    },
+  };
+
+  const skillVariants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: { opacity: 1, scale: 1, transition: { type: "spring" as const, stiffness: 300 } },
+  };
+
   return (
     <section id="about" className="py-24 md:py-32 px-6 md:px-12 lg:px-24">
       <SectionHeading title="About" number="01" />
@@ -31,25 +43,33 @@ const About = () => {
             optimizing performance, creating smooth user experiences — been there, done that.
           </p>
         </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.3 }}
-        >
-          <p className="text-xs font-body text-muted-foreground tracking-widest uppercase mb-6">
+        <div>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 1 } : {}}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="text-xs font-body text-accent tracking-widest uppercase mb-6"
+          >
             Technologies
-          </p>
-          <div className="flex flex-wrap gap-2">
+          </motion.p>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate={isInView ? "visible" : "hidden"}
+            className="flex flex-wrap gap-2"
+          >
             {skills.map((skill) => (
-              <span
+              <motion.span
                 key={skill}
-                className="text-sm font-body text-secondary-foreground bg-secondary px-3 py-1.5 border border-border"
+                variants={skillVariants}
+                whileHover={{ scale: 1.1, borderColor: "hsl(25, 80%, 55%)" }}
+                className="text-sm font-body text-secondary-foreground bg-secondary px-3 py-1.5 border border-border cursor-default transition-colors"
               >
                 {skill}
-              </span>
+              </motion.span>
             ))}
-          </div>
-        </motion.div>
+          </motion.div>
+        </div>
       </div>
     </section>
   );

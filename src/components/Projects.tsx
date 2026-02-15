@@ -54,24 +54,35 @@ const ProjectCard = ({
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group border border-border p-6 md:p-8 hover:bg-card transition-colors duration-300"
+      initial={{ opacity: 0, y: 40, rotateX: 5 }}
+      animate={isInView ? { opacity: 1, y: 0, rotateX: 0 } : {}}
+      transition={{ duration: 0.6, delay: index * 0.1, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ y: -4, borderColor: "hsl(25, 80%, 55%)" }}
+      className="group border border-border p-6 md:p-8 hover:bg-card transition-all duration-500 relative overflow-hidden"
     >
-      <h3 className="font-heading text-xl text-foreground mb-3">{title}</h3>
-      <p className="text-sm font-body text-muted-foreground leading-relaxed mb-5">
-        {description}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {tech.map((t) => (
-          <span
-            key={t}
-            className="text-xs font-body text-muted-foreground border border-border px-2 py-0.5"
-          >
-            {t}
-          </span>
-        ))}
+      {/* Hover glow */}
+      <div className="absolute inset-0 bg-accent/[0.02] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
+      <div className="relative">
+        <span className="text-xs font-body text-accent/60 tracking-widest mb-2 block">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <h3 className="font-heading text-xl text-foreground mb-3 group-hover:text-gradient transition-all duration-300">
+          {title}
+        </h3>
+        <p className="text-sm font-body text-muted-foreground leading-relaxed mb-5">
+          {description}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {tech.map((t) => (
+            <span
+              key={t}
+              className="text-xs font-body text-muted-foreground border border-border px-2 py-0.5 group-hover:border-accent/20 transition-colors"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
       </div>
     </motion.div>
   );
