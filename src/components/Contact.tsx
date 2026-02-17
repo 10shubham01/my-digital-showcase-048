@@ -2,8 +2,8 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect, useCallback } from "react";
 import SectionHeading from "./SectionHeading";
 
-// Virtual file system
-const fileSystem: Record<string, Record<string, string>> = {
+// Initial virtual file system (will be cloned into state)
+const initialFileSystem: Record<string, Record<string, string>> = {
   "~": {
     "about.txt": "Shubham Gupta -- Full-Stack Developer\n3+ years of experience building high-performance web apps.\nSpecializing in React, Next.js, Vue.js, TypeScript, and AWS.\n\nCurrently building a no-code platform to democratize software development.",
     "contact.json": JSON.stringify({ email: "shubhamedu.01@gmail.com", github: "10shubham01", linkedin: "10shubham01", website: "shubhamgupta.dev" }, null, 2),
@@ -43,6 +43,21 @@ const MATRIX_RAIN = Array.from({ length: 12 }, () =>
   ).join("")
 );
 
+const getNeofetch = () => `
+        .--.          shubham@portfolio
+       |o_o |         ---------------------
+       |:_/ |         OS: Web/React 18.3
+      //   \\ \\        Shell: zsh 5.9
+     (|     | )       Terminal: portfolio-term v3.0
+    /'\\_   _/\`\\       Theme: Monochrome [Dark/Light]
+    \\___)=(___/       Stack: React / Next.js / Vue / TS
+                      Cloud: AWS Lambda / S3 / CloudFront
+                      Uptime: ${Math.floor((Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24))} days engineering
+                      Packages: 47 (npm)
+                      Resolution: inf x inf
+                      Current: Building No-Code Platform
+`;
+
 const HELP_TEXT = `
 AVAILABLE COMMANDS
 ==================
@@ -58,6 +73,8 @@ FILE SYSTEM
   touch <file>      create empty file
   mkdir <name>      create directory
   wc <file>         word/line count
+  rm <file>         delete a file
+  vi/nano <file>    edit or create a file
 
 INFO
   whoami            display user info
@@ -101,41 +118,28 @@ SYSTEM
   ping <host>       ping a host
   curl <url>        fetch a url`;
 
-const NEOFETCH = `
-        .--.          shubham@portfolio
-       |o_o |         ---------------------
-       |:_/ |         OS: Web/React 18.3
-      //   \\ \\        Shell: zsh 5.9
-     (|     | )       Terminal: portfolio-term v3.0
-    /'\\_   _/\`\\       Theme: Monochrome [Dark/Light]
-    \\___)=(___/       Stack: React / Next.js / Vue / TS
-                      Cloud: AWS Lambda / S3 / CloudFront
-                      Uptime: ${Math.floor((Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24))} days engineering
-                      Packages: 47 (npm)
-                      Resolution: inf x inf
-                      Current: Building No-Code Platform
-`;
-
-const TREE_VIEW = `
-~/
-|-- about.txt
-|-- contact.json
-|-- skills.csv
-|-- resume.md
-|-- .secret
-|-- .env
-|-- projects/
-|   |-- nocode-platform.md  <-- current
-|   |-- bureau-wrap.md
-|   |-- customer-portal.md
-|   |-- advisor-portal.md
-|   \`-- admin-portal.md
-\`-- scripts/
-    |-- hello.js
-    |-- fibonacci.js
-    |-- fizzbuzz.js
-    \`-- README.md
-`;
+const getTreeView = (fs: Record<string, Record<string, string>>) => {
+  let tree = "~/\n";
+  const homeFiles = Object.keys(fs["~"] || {});
+  homeFiles.forEach((f, i) => {
+    const isLast = i === homeFiles.length - 1;
+    const prefix = isLast ? "`-- " : "|-- ";
+    if (f.endsWith("/")) {
+      const dirName = f.replace("/", "");
+      const dirPath = `~/${dirName}`;
+      tree += `${prefix}${f}\n`;
+      const dirFiles = Object.keys(fs[dirPath] || {});
+      dirFiles.forEach((df, j) => {
+        const dIsLast = j === dirFiles.length - 1;
+        const dPrefix = isLast ? "    " : "|   ";
+        tree += `${dPrefix}${dIsLast ? "`-- " : "|-- "}${df}\n`;
+      });
+    } else {
+      tree += `${prefix}${f}\n`;
+    }
+  });
+  return tree;
+};
 
 const FORTUNES = [
   "A merge conflict in your future will lead to enlightenment.",
@@ -223,12 +227,11 @@ const runJS = (code: string): string => {
   };
 
   try {
-    // Create a sandboxed function with overridden console
     const fn = new Function("console", "Math", "Date", "JSON", "Array", "Object", "String", "Number", "Boolean", "RegExp", "Map", "Set", "Promise", "parseInt", "parseFloat", "isNaN", "isFinite", "undefined",
       `"use strict";\n${code}`
     );
     const result = fn(fakeConsole, Math, Date, JSON, Array, Object, String, Number, Boolean, RegExp, Map, Set, Promise, parseInt, parseFloat, isNaN, isFinite, undefined);
-    
+
     if (result !== undefined && logs.length === 0) {
       logs.push(typeof result === "object" ? JSON.stringify(result, null, 2) : String(result));
     }
@@ -241,8 +244,16 @@ const runJS = (code: string): string => {
 };
 
 interface TermLine {
-  type: "input" | "output" | "ascii" | "error" | "system" | "success" | "warning";
+  type: "input" | "output" | "ascii" | "error" | "system" | "success" | "warning" | "editor-line";
   content: string;
+}
+
+interface EditorState {
+  active: boolean;
+  fileName: string;
+  filePath: string; // cwd at time of opening
+  lines: string[];
+  cursorLine: number;
 }
 
 const Contact = () => {
@@ -256,13 +267,25 @@ const Contact = () => {
   const [booted, setBooted] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [jsRepl, setJsRepl] = useState(false);
+  const [fs, setFs] = useState<Record<string, Record<string, string>>>(() =>
+    JSON.parse(JSON.stringify(initialFileSystem))
+  );
+  const [editor, setEditor] = useState<EditorState>({
+    active: false,
+    fileName: "",
+    filePath: "~",
+    lines: [],
+    cursorLine: 0,
+  });
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
 
-  // ESC to close fullscreen
+  // ESC to close fullscreen / exit modes
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (editor.active) return; // editor handles its own ESC
         if (isMaximized) setIsMaximized(false);
         if (jsRepl) {
           setJsRepl(false);
@@ -272,7 +295,7 @@ const Contact = () => {
     };
     window.addEventListener("keydown", handleEsc);
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isMaximized, jsRepl]);
+  }, [isMaximized, jsRepl, editor.active]);
 
   // Boot sequence
   useEffect(() => {
@@ -308,9 +331,33 @@ const Contact = () => {
     }
   }, [lines]);
 
+  // Focus editor textarea when editor opens
+  useEffect(() => {
+    if (editor.active && editorRef.current) {
+      editorRef.current.focus();
+    }
+  }, [editor.active]);
+
   const getCurrentDir = useCallback(() => {
-    return fileSystem[cwd] as Record<string, string> | undefined;
-  }, [cwd]);
+    return fs[cwd] as Record<string, string> | undefined;
+  }, [cwd, fs]);
+
+  const saveEditorFile = useCallback(() => {
+    const content = editor.lines.join("\n");
+    setFs(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      if (!next[editor.filePath]) next[editor.filePath] = {};
+      next[editor.filePath][editor.fileName] = content;
+      return next;
+    });
+    setLines(prev => [...prev, { type: "success", content: `Saved ${editor.fileName} (${content.length} bytes)` }]);
+    setEditor({ active: false, fileName: "", filePath: "~", lines: [], cursorLine: 0 });
+  }, [editor]);
+
+  const discardEditor = useCallback(() => {
+    setLines(prev => [...prev, { type: "warning", content: `Discarded changes to ${editor.fileName}` }]);
+    setEditor({ active: false, fileName: "", filePath: "~", lines: [], cursorLine: 0 });
+  }, [editor.fileName]);
 
   const processCommand = useCallback((input: string) => {
     // Handle JS REPL mode
@@ -335,7 +382,7 @@ const Contact = () => {
     }
 
     const parts = input.trim().split(/\s+/);
-    const cmd = parts[0]?.toLowerCase();
+    const cmd = parts[0]?.toLowerCase() || "";
     const args = parts.slice(1).join(" ");
     const newLines: TermLine[] = [{ type: "input", content: `${cwd} $ ${input}` }];
 
@@ -348,11 +395,8 @@ const Contact = () => {
 
       case "ls": {
         const targetPath = args ? (args === ".." ? "~" : args.startsWith("~/") ? args : `${cwd}/${args}`.replace("~/~/", "~/")) : cwd;
-        const targetDir = fileSystem[targetPath] || fileSystem[targetPath.replace(/\/$/, "")];
-        const renderDir = (d: Record<string, string>) => {
-          const files = Object.keys(d);
-          return files.join("  ");
-        };
+        const targetDir = fs[targetPath] || fs[targetPath.replace(/\/$/, "")];
+        const renderDir = (d: Record<string, string>) => Object.keys(d).join("  ");
         if (targetDir && typeof targetDir === "object") {
           newLines.push({ type: "output", content: renderDir(targetDir) });
         } else if (dir) {
@@ -364,10 +408,7 @@ const Contact = () => {
       }
 
       case "cat": {
-        if (!args) {
-          newLines.push({ type: "error", content: "cat: missing file operand" });
-          break;
-        }
+        if (!args) { newLines.push({ type: "error", content: "cat: missing file operand" }); break; }
         const file = dir?.[args];
         if (file && file !== "DIR") {
           newLines.push({ type: "output", content: file });
@@ -383,7 +424,7 @@ const Contact = () => {
         if (!args || args === "~") { setCwd("~"); break; }
         if (args === "..") { setCwd("~"); break; }
         const target = args.startsWith("~/") ? args : `${cwd}/${args}`.replace(/\/$/, "");
-        if (fileSystem[target]) {
+        if (fs[target]) {
           setCwd(target);
         } else if (dir?.[args + "/"] === "DIR") {
           setCwd(`${cwd}/${args}`);
@@ -402,11 +443,11 @@ const Contact = () => {
         break;
 
       case "tree":
-        newLines.push({ type: "output", content: TREE_VIEW });
+        newLines.push({ type: "output", content: getTreeView(fs) });
         break;
 
       case "neofetch":
-        newLines.push({ type: "output", content: NEOFETCH });
+        newLines.push({ type: "output", content: getNeofetch() });
         break;
 
       case "uptime": {
@@ -442,7 +483,7 @@ Coding Weather Report
       case "find": {
         if (!args) { newLines.push({ type: "error", content: "find: missing pattern" }); break; }
         const results: string[] = [];
-        Object.entries(fileSystem).forEach(([path, files]) => {
+        Object.entries(fs).forEach(([path, files]) => {
           if (typeof files === "object") {
             Object.keys(files).forEach(f => {
               if (f.toLowerCase().includes(args.toLowerCase())) {
@@ -458,7 +499,7 @@ Coding Weather Report
       case "grep": {
         if (!args) { newLines.push({ type: "error", content: "grep: missing search text" }); break; }
         const grepResults: string[] = [];
-        Object.entries(fileSystem).forEach(([path, files]) => {
+        Object.entries(fs).forEach(([path, files]) => {
           if (typeof files === "object") {
             Object.entries(files).forEach(([fname, content]) => {
               if (content !== "DIR" && content.toLowerCase().includes(args.toLowerCase())) {
@@ -474,19 +515,42 @@ Coding Weather Report
 
       case "touch": {
         if (!args) { newLines.push({ type: "error", content: "touch: missing file operand" }); break; }
-        if (dir) {
-          dir[args] = "";
-          newLines.push({ type: "output", content: `created: ${args}` });
-        }
+        setFs(prev => {
+          const next = JSON.parse(JSON.stringify(prev));
+          if (!next[cwd]) next[cwd] = {};
+          next[cwd][args] = "";
+          return next;
+        });
+        newLines.push({ type: "output", content: `created: ${args}` });
         break;
       }
 
       case "mkdir": {
         if (!args) { newLines.push({ type: "error", content: "mkdir: missing operand" }); break; }
-        if (dir) {
-          dir[args + "/"] = "DIR";
-          fileSystem[`${cwd}/${args}`] = {};
-          newLines.push({ type: "output", content: `mkdir: created directory '${args}'` });
+        setFs(prev => {
+          const next = JSON.parse(JSON.stringify(prev));
+          if (!next[cwd]) next[cwd] = {};
+          next[cwd][args + "/"] = "DIR";
+          next[`${cwd}/${args}`] = {};
+          return next;
+        });
+        newLines.push({ type: "output", content: `mkdir: created directory '${args}'` });
+        break;
+      }
+
+      case "rm": {
+        if (!args) { newLines.push({ type: "error", content: "rm: missing file operand" }); break; }
+        if (dir?.[args] !== undefined && dir[args] !== "DIR") {
+          setFs(prev => {
+            const next = JSON.parse(JSON.stringify(prev));
+            delete next[cwd][args];
+            return next;
+          });
+          newLines.push({ type: "output", content: `removed: ${args}` });
+        } else if (dir?.[args] === "DIR" || dir?.[args + "/"] === "DIR") {
+          newLines.push({ type: "error", content: `rm: ${args}: is a directory (use rm -r)` });
+        } else {
+          newLines.push({ type: "error", content: `rm: ${args}: No such file` });
         }
         break;
       }
@@ -505,30 +569,53 @@ Coding Weather Report
         break;
       }
 
+      // vi / nano / edit - open file editor
+      case "vi":
+      case "vim":
+      case "nano":
+      case "edit": {
+        if (!args) { newLines.push({ type: "error", content: `${cmd}: missing filename` }); break; }
+        const existingContent = dir?.[args];
+        if (existingContent === "DIR") {
+          newLines.push({ type: "error", content: `${cmd}: ${args}: Is a directory` });
+          break;
+        }
+        const content = existingContent || "";
+        newLines.push({ type: "system", content: `-- ${cmd.toUpperCase()} -- editing "${args}" --\n-- Ctrl+S to save | ESC to discard --` });
+        setLines(prev => [...prev, ...newLines]);
+        setEditor({
+          active: true,
+          fileName: args,
+          filePath: cwd,
+          lines: content.split("\n"),
+          cursorLine: 0,
+        });
+        setCommandHistory((prev) => [...prev, input]);
+        setHistoryIndex(-1);
+        return; // don't append newLines again
+      }
+
       // JavaScript execution
       case "node": {
         if (!args) {
-          // Enter REPL mode
           setJsRepl(true);
           newLines.push({ type: "system", content: "Welcome to Node.js v18.17.0 (portfolio-runtime)\nType .exit or press ESC to exit the REPL.\n>" });
           break;
         }
         if (args.startsWith("-e ")) {
-          // Inline evaluation
           const code = args.slice(3).replace(/^["']|["']$/g, "");
           const output = runJS(code);
           newLines.push({ type: "output", content: output || "(undefined)" });
           break;
         }
-        // Run a file from ~/scripts/
-        const scriptDir = fileSystem["~/scripts"];
+        const scriptDir = fs["~/scripts"];
         const scriptFile = scriptDir?.[args] || scriptDir?.[args + ".js"];
         if (scriptFile && scriptFile !== "DIR") {
           newLines.push({ type: "system", content: `Running ${args}...\n` });
           const output = runJS(scriptFile);
           newLines.push({ type: "output", content: output || "(no output)" });
         } else {
-          newLines.push({ type: "error", content: `node: cannot find module '${args}'\nAvailable scripts: ${Object.keys(fileSystem["~/scripts"] || {}).filter(f => f.endsWith(".js")).join(", ")}` });
+          newLines.push({ type: "error", content: `node: cannot find module '${args}'\nAvailable scripts: ${Object.keys(fs["~/scripts"] || {}).filter(f => f.endsWith(".js")).join(", ")}` });
         }
         break;
       }
@@ -625,6 +712,8 @@ Coding Weather Report
           cat: "CAT(1)\n\nNAME\n  cat - concatenate and print files\n\nSYNOPSIS\n  cat <file>\n\nDESCRIPTION\n  Display contents of a file in the virtual filesystem.",
           cd: "CD(1)\n\nNAME\n  cd - change directory\n\nSYNOPSIS\n  cd <dir>\n\nDESCRIPTION\n  Navigate the virtual filesystem. Use '..' to go up.",
           node: "NODE(1)\n\nNAME\n  node - JavaScript runtime\n\nSYNOPSIS\n  node              start REPL\n  node <file.js>    run script from ~/scripts/\n  node -e \"code\"    evaluate inline JS\n\nDESCRIPTION\n  Execute JavaScript code in a sandboxed environment.\n  Console output is captured and displayed in the terminal.",
+          vi: "VI(1)\n\nNAME\n  vi - text editor\n\nSYNOPSIS\n  vi <filename>\n\nDESCRIPTION\n  Open a file for editing. If the file doesn't exist, a new one is created.\n  Use Ctrl+S to save and ESC to discard changes.",
+          nano: "NANO(1)\n\nNAME\n  nano - text editor\n\nSYNOPSIS\n  nano <filename>\n\nDESCRIPTION\n  Open a file for editing. If the file doesn't exist, a new one is created.\n  Use Ctrl+S to save and ESC to discard changes.",
           hack: "HACK(1)\n\nNAME\n  hack - totally legit hacking tool\n\nWARNING\n  This command is 100% safe and mostly just for fun.",
         };
         newLines.push({ type: "output", content: manPages[args] || `No manual entry for '${args}'` });
@@ -651,10 +740,6 @@ Coding Weather Report
 
       case "sudo":
         newLines.push({ type: "error", content: "Nice try! But you don't have root access here.\nThis incident will be reported. (Just kidding)" });
-        break;
-
-      case "rm":
-        newLines.push({ type: "error", content: "rm: permission denied. This portfolio is indestructible." });
         break;
 
       case "exit":
@@ -690,7 +775,16 @@ Coding Weather Report
       case "cal": {
         const now = new Date();
         const month = now.toLocaleString("default", { month: "long" });
-        newLines.push({ type: "output", content: `     ${month} ${now.getFullYear()}\nSu Mo Tu We Th Fr Sa\n${Array.from({ length: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() }, (_, i) => String(i + 1).padStart(2, " ") + ((i + 1) === now.getDate() ? "*" : " ")).reduce((acc, d, i) => { const dayOfWeek = new Date(now.getFullYear(), now.getMonth(), i + 1).getDay(); if (i === 0) acc += "   ".repeat(dayOfWeek); acc += d; if (dayOfWeek === 6) acc += "\n"; return acc; }, "")}` });
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+        let calStr = `     ${month} ${now.getFullYear()}\nSu Mo Tu We Th Fr Sa\n`;
+        calStr += "   ".repeat(firstDay);
+        for (let d = 1; d <= daysInMonth; d++) {
+          const marker = d === now.getDate() ? "*" : " ";
+          calStr += String(d).padStart(2, " ") + marker;
+          if ((firstDay + d) % 7 === 0) calStr += "\n";
+        }
+        newLines.push({ type: "output", content: calStr });
         break;
       }
 
@@ -705,7 +799,7 @@ Coding Weather Report
     setLines((prev) => [...prev, ...newLines]);
     setCommandHistory((prev) => [...prev, input]);
     setHistoryIndex(-1);
-  }, [cwd, getCurrentDir, commandHistory, jsRepl]);
+  }, [cwd, getCurrentDir, commandHistory, jsRepl, fs]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && userInput.trim()) {
@@ -753,6 +847,16 @@ Coding Weather Report
     }
   };
 
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      saveEditorFile();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      discardEditor();
+    }
+  };
+
   const getLineColor = (type: TermLine["type"]) => {
     switch (type) {
       case "input": return "text-foreground";
@@ -762,6 +866,7 @@ Coding Weather Report
       case "system": return "text-muted-foreground/80";
       case "success": return "text-foreground";
       case "warning": return "text-muted-foreground";
+      case "editor-line": return "text-foreground";
     }
   };
 
@@ -774,24 +879,30 @@ Coding Weather Report
       <motion.div
         ref={ref}
         initial={{ opacity: 0, y: 30 }}
-        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
         transition={{ duration: 0.6 }}
         className="max-w-4xl relative"
       >
         <p className="text-base font-body text-muted-foreground leading-relaxed mb-8">
-          Fully interactive terminal — navigate my filesystem, run JavaScript, or type <span className="text-foreground font-mono">help</span>. Try <span className="text-foreground font-mono">node</span> to start a JS REPL.
+          Fully interactive terminal — navigate my filesystem, run JavaScript, or type <span className="text-foreground font-mono">help</span>. Try <span className="text-foreground font-mono">vi filename</span> to edit files.
         </p>
 
         <AnimatePresence>
           <motion.div
             layout
             initial={{ opacity: 0, scale: 0.95 }}
-            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.5, delay: 0.2 }}
             className={`border border-border bg-background overflow-hidden transition-all duration-300 ${
               isMaximized ? "fixed inset-4 z-50 shadow-2xl" : "relative"
             }`}
-            onClick={() => inputRef.current?.focus()}
+            onClick={() => {
+              if (editor.active) {
+                editorRef.current?.focus();
+              } else {
+                inputRef.current?.focus();
+              }
+            }}
           >
             {/* Title bar */}
             <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card select-none">
@@ -811,10 +922,18 @@ Coding Weather Report
                 title={isMaximized ? "Exit fullscreen (ESC)" : "Maximize"}
               />
               <span className="ml-3 text-xs font-mono text-muted-foreground">
-                {jsRepl ? "node — REPL" : `shubham@portfolio: ${cwd}`}
+                {editor.active
+                  ? `${editor.fileName} -- EDITING`
+                  : jsRepl
+                  ? "node -- REPL"
+                  : `shubham@portfolio: ${cwd}`}
               </span>
               <span className="ml-auto text-[10px] font-mono text-muted-foreground/40 hidden sm:inline">
-                {jsRepl ? "node v18.17.0" : `zsh — ${isMaximized ? "fullscreen (ESC to exit)" : "80x24"}`}
+                {editor.active
+                  ? "Ctrl+S save | ESC discard"
+                  : jsRepl
+                  ? "node v18.17.0"
+                  : `zsh -- ${isMaximized ? "fullscreen (ESC to exit)" : "80x24"}`}
               </span>
             </div>
 
@@ -834,8 +953,44 @@ Coding Weather Report
                 </pre>
               ))}
 
-              {/* Input line */}
-              {booted && (
+              {/* Editor mode */}
+              {editor.active && booted && (
+                <div className="mt-2 border border-border/50 bg-card/50 p-1">
+                  <div className="flex justify-between items-center px-2 py-1 border-b border-border/30 text-[10px] text-muted-foreground/60">
+                    <span>-- EDITING: {editor.fileName} --</span>
+                    <span>Ctrl+S save | ESC discard</span>
+                  </div>
+                  <textarea
+                    ref={editorRef}
+                    value={editor.lines.join("\n")}
+                    onChange={(e) => setEditor(prev => ({ ...prev, lines: e.target.value.split("\n") }))}
+                    onKeyDown={handleEditorKeyDown}
+                    className="w-full bg-transparent text-foreground outline-none font-mono text-xs md:text-sm p-2 min-h-[200px] resize-y caret-foreground leading-relaxed"
+                    spellCheck={false}
+                    autoFocus
+                  />
+                  <div className="flex gap-2 px-2 py-1 border-t border-border/30">
+                    <button
+                      onClick={saveEditorFile}
+                      className="text-[10px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 border border-border/50 hover:border-foreground/30 transition-colors"
+                    >
+                      [Ctrl+S] Save
+                    </button>
+                    <button
+                      onClick={discardEditor}
+                      className="text-[10px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 border border-border/50 hover:border-foreground/30 transition-colors"
+                    >
+                      [ESC] Discard
+                    </button>
+                    <span className="ml-auto text-[10px] text-muted-foreground/40 font-mono">
+                      {editor.lines.length} lines | {editor.lines.join("\n").length} chars
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Input line (hidden when editor is active) */}
+              {booted && !editor.active && (
                 <div className="flex gap-2 items-center pt-1">
                   <span className="text-muted-foreground text-xs shrink-0">{prompt}</span>
                   <input
