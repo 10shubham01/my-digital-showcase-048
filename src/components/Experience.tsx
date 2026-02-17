@@ -5,6 +5,15 @@ import Alien from "./Alien";
 
 const experiences = [
   {
+    role: "Founder / Builder",
+    company: "No-Code Platform",
+    period: "Present",
+    description:
+      "Building a no-code platform to democratize software development — enabling anyone to create full-stack applications without writing code.",
+    tech: ["React", "TypeScript", "Node.js", "PostgreSQL", "AWS"],
+    projects: [],
+  },
+  {
     role: "Senior Software Engineer / Lead Developer",
     company: "Credilio Financial Technologies",
     period: "Dec 2022 — Present",

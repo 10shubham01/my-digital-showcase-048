@@ -1,21 +1,28 @@
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useRef, useState, useEffect, useCallback } from "react";
 import SectionHeading from "./SectionHeading";
 
-// Simulated file system
-const fileSystem: Record<string, string | Record<string, string>> = {
+// Virtual file system
+const fileSystem: Record<string, Record<string, string>> = {
   "~": {
-    "about.txt": "Shubham Gupta — Full-Stack Developer\n3+ years of experience building high-performance web apps.\nSpecializing in React, Next.js, Vue.js, TypeScript, and AWS.",
-    "contact.json": JSON.stringify({ email: "shubhamedu.01@gmail.com", github: "10shubham01", linkedin: "10shubham01" }, null, 2),
-    "skills.csv": "TypeScript,React,Next.js,Vue.js,Nuxt.js,Node.js,Tailwind CSS,PostgreSQL,AWS,Git",
-    "resume.md": "# Shubham Gupta\n## Senior Software Engineer @ Credilio (2022-Present)\n- Led engineering team, designed AWS architectures\n- Built Bureau Wrap, Customer Portal, Advisor Portal\n## Software Engineer @ MountBlue (2021-2022)\n- Vue.js, React, Node.js full-stack development\n- Migrated Nuxt 2 → Nuxt 3",
-    ".secret": "⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n🎉 You found the easter egg! Type 'hack' for a surprise.",
+    "about.txt": "Shubham Gupta — Full-Stack Developer\n3+ years of experience building high-performance web apps.\nSpecializing in React, Next.js, Vue.js, TypeScript, and AWS.\n\nCurrently building a no-code platform to democratize software development.",
+    "contact.json": JSON.stringify({ email: "shubhamedu.01@gmail.com", github: "10shubham01", linkedin: "10shubham01", website: "shubhamgupta.dev" }, null, 2),
+    "skills.csv": "Category,Skills\nFrontend,React / Next.js / Vue.js / Nuxt.js / TypeScript\nStyling,Tailwind CSS / Styled Components / CSS Modules\nBackend,Node.js / Express / AdonisJS / PostgreSQL\nCloud,AWS Lambda / S3 / CloudFront / EC2\nTools,Git / Docker / New Relic / Vite / Turborepo",
+    "resume.md": "# Shubham Gupta\n\n## Currently Building\n🚀 No-Code Platform — Democratizing software development\n   Tech: React, TypeScript, Node.js, PostgreSQL, AWS\n\n## Senior Software Engineer @ Credilio (Dec 2022 — Present)\n- Led engineering team of 5, designed AWS architectures from scratch\n- Built Bureau Wrap Video, Customer Portal, Advisor Portal\n- Integrated New Relic observability & Singular attribution\n\n## Software Engineer @ MountBlue (Aug 2021 — Nov 2022)\n- Vue.js, React, Node.js full-stack development\n- Migrated Nuxt 2 → Nuxt 3\n- Built Admin Portal with role-based authorization",
+    ".secret": "⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿\n🎉 You found the easter egg!\nType 'hack' for a surprise or 'games' for fun.",
+    ".env": "# Environment Variables\nNODE_ENV=production\nPORTFOLIO_VERSION=3.0.0\nCOFFEE_LEVEL=critical\nBUGS_FOUND=0\nBUGS_CREATED=∞",
     "projects/": "DIR",
+    "games/": "DIR",
   },
   "~/projects": {
-    "bureau-wrap.md": "# Bureau Wrap Video\nNext.js credit score visualization with Remotion.\nTech: Next.js, Remotion, AWS Lambda, PostgreSQL",
-    "customer-portal.md": "# Customer Portal\nWhite-label credit card & personal loan journeys.\nTech: React, Next.js, TypeScript, Zod, Redux",
-    "advisor-portal.md": "# Advisor Portal\nMulti-tenant advisory platform.\nTech: React, Next.js, TypeScript, Vite",
+    "nocode-platform.md": "# 🚀 No-Code Platform (Current)\nDemocratizing software development.\nBuild full-stack apps without writing code.\nTech: React, TypeScript, Node.js, PostgreSQL, AWS\nStatus: In Development 🔨",
+    "bureau-wrap.md": "# Bureau Wrap Video\nNext.js credit score visualization with Remotion.\nAutomated personalized credit score video presentations.\nTech: Next.js, Remotion, AWS Lambda, PostgreSQL",
+    "customer-portal.md": "# Customer Portal\nWhite-label credit card & personal loan journeys.\nComposable component architecture with form validation.\nTech: React, Next.js, TypeScript, Zod, Redux",
+    "advisor-portal.md": "# Advisor Portal\nMulti-tenant advisory platform.\nAccessible form infrastructure with white-label support.\nTech: React, Next.js, TypeScript, Vite",
+    "admin-portal.md": "# Admin Portal\nCentralized admin system with role & policy-driven auth.\nBuilt during MountBlue tenure.\nTech: Nuxt.js, Vue.js, TypeScript, Pinia",
+  },
+  "~/games": {
+    "README.md": "Available games:\n- Type 'snake' to play Snake\n- Type 'tictactoe' to play Tic Tac Toe\n- Type 'guess' to play Number Guessing",
   },
 };
 
@@ -25,47 +32,74 @@ const ASCII_BANNER = `
  ███████╗███████║██║   ██║██████╔╝███████║███████║██╔████╔██║
  ╚════██║██╔══██║██║   ██║██╔══██╗██╔══██║██╔══██║██║╚██╔╝██║
  ███████║██║  ██║╚██████╔╝██████╔╝██║  ██║██║  ██║██║ ╚═╝ ██║
- ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝
-`;
+ ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝`;
 
-const MATRIX_RAIN = Array.from({ length: 8 }, () =>
-  Array.from({ length: 50 }, () => 
-    "ア イ ウ エ オ カ キ ク ケ コ サ シ ス セ ソ".split(" ")[Math.floor(Math.random() * 15)]
+const MATRIX_RAIN = Array.from({ length: 12 }, () =>
+  Array.from({ length: 60 }, () =>
+    "ア イ ウ エ オ カ キ ク ケ コ サ シ ス セ ソ タ チ ツ テ ト".split(" ")[Math.floor(Math.random() * 20)]
   ).join("")
 );
 
 const HELP_TEXT = `
-┌─────────────────────────────────────────────────────┐
-│  AVAILABLE COMMANDS                                 │
-├─────────────────────────────────────────────────────┤
-│  ls [dir]        list files in directory            │
-│  cat <file>      read file contents                 │
-│  cd <dir>        change directory                   │
-│  pwd             print working directory            │
-│  whoami          display user info                  │
-│  tree            show file tree                     │
-│  neofetch        system info                        │
-│  email           open email client                  │
-│  github          open GitHub profile                │
-│  linkedin        open LinkedIn profile              │
-│  history         show command history               │
-│  hack            ???                                │
-│  matrix          enter the matrix                   │
-│  clear           clear terminal                     │
-│  help            show this help                     │
-└─────────────────────────────────────────────────────┘`;
+┌──────────────────────────────────────────────────────────────┐
+│  ⚡ AVAILABLE COMMANDS                                       │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  📂 FILE SYSTEM                                              │
+│  ls [dir]          list files in directory                   │
+│  cat <file>        read file contents                        │
+│  cd <dir>          change directory                          │
+│  pwd               print working directory                   │
+│  tree              show file tree                            │
+│  find <pattern>    search for files                          │
+│  grep <text>       search file contents                      │
+│                                                              │
+│  👤 INFO                                                     │
+│  whoami            display user info                         │
+│  neofetch          system info with ASCII art                │
+│  uptime            show experience duration                  │
+│  skills            show skills radar                         │
+│  weather           check the coding weather                  │
+│                                                              │
+│  🔗 LINKS                                                    │
+│  email             open email client                         │
+│  github / gh       open GitHub profile                       │
+│  linkedin / li     open LinkedIn profile                     │
+│                                                              │
+│  🎮 FUN                                                      │
+│  hack              ???                                       │
+│  matrix            enter the matrix                          │
+│  fortune           get a dev fortune cookie                  │
+│  cowsay <msg>      cow says what?                            │
+│  figlet <text>     ASCII art text                            │
+│  joke              random dev joke                           │
+│  quiz              dev trivia                                │
+│  snake             play snake                                │
+│                                                              │
+│  ⚙️  SYSTEM                                                   │
+│  history           show command history                      │
+│  clear / ctrl+l    clear terminal                            │
+│  theme             toggle dark/light                         │
+│  banner            show welcome banner                       │
+│  help              show this help                            │
+│  man <cmd>         manual for a command                      │
+│  alias             show command aliases                      │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘`;
 
 const NEOFETCH = `
         .--.          shubham@portfolio
-       |o_o |         ─────────────────
+       |o_o |         ─────────────────────
        |:_/ |         OS: Web/React 18.3
       //   \\ \\        Shell: zsh 5.9
-     (|     | )       Terminal: portfolio-term v2.0
-    /'\\_   _/\`\\       Theme: Monochrome [Dark]
+     (|     | )       Terminal: portfolio-term v3.0
+    /'\\_   _/\`\\       Theme: Monochrome [Dark/Light]
     \\___)=(___/       Stack: React / Next.js / Vue / TS
-                      Uptime: 3+ years engineering
+                      Cloud: AWS Lambda / S3 / CloudFront
+                      Uptime: ${Math.floor((Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24))} days engineering
                       Packages: 47 (npm)
-                      Resolution: ∞ x ∞
+                      Resolution: ∞ × ∞
+                      Current: Building No-Code Platform 🚀
 `;
 
 const TREE_VIEW = `
@@ -75,14 +109,93 @@ const TREE_VIEW = `
 ├── skills.csv
 ├── resume.md
 ├── .secret
-└── projects/
-    ├── bureau-wrap.md
-    ├── customer-portal.md
-    └── advisor-portal.md
+├── .env
+├── projects/
+│   ├── nocode-platform.md  ← 🔥 Current
+│   ├── bureau-wrap.md
+│   ├── customer-portal.md
+│   ├── advisor-portal.md
+│   └── admin-portal.md
+└── games/
+    └── README.md
 `;
 
+const FORTUNES = [
+  "🔮 A merge conflict in your future will lead to enlightenment.",
+  "🔮 The bug you seek is on line 42. It's always line 42.",
+  "🔮 Your next npm install will only add 847 packages.",
+  "🔮 A production deployment on Friday brings wisdom through suffering.",
+  "🔮 The code you write today will confuse you in 6 months.",
+  "🔮 Someone will say 'it works on my machine' today.",
+  "🔮 You will mass-delete node_modules and feel strangely free.",
+  "🔮 A semicolon will save your life today. Or ruin it.",
+  "🔮 Your PR will be approved without comments. Just kidding.",
+  "🔮 Today's Stack Overflow answer was written by you, 3 years ago.",
+];
+
+const JOKES = [
+  "Why do programmers prefer dark mode?\nBecause light attracts bugs. 🐛",
+  "A SQL query walks into a bar, walks up to two tables and asks...\n'Can I join you?' 🍺",
+  "!false — It's funny because it's true. 😄",
+  "How many programmers does it take to change a light bulb?\nNone. That's a hardware problem. 💡",
+  "Why do Java developers wear glasses?\nBecause they can't C#. 👓",
+  "What's a programmer's favorite hangout place?\nFoo Bar. 🍻",
+  "There are only 10 types of people in the world:\nThose who understand binary and those who don't. 🤓",
+  "Algorithm: Word used by programmers when they\ndon't want to explain what they did. 🧠",
+];
+
+const QUIZ_QUESTIONS = [
+  { q: "What does CSS stand for?", a: "Cascading Style Sheets", options: ["A) Creative Style System", "B) Cascading Style Sheets", "C) Computer Style Sheets"] },
+  { q: "Which company created React?", a: "Meta (Facebook)", options: ["A) Google", "B) Meta (Facebook)", "C) Microsoft"] },
+  { q: "What year was TypeScript released?", a: "2012", options: ["A) 2010", "B) 2012", "C) 2015"] },
+  { q: "What does API stand for?", a: "Application Programming Interface", options: ["A) Application Programming Interface", "B) Advanced Program Integration", "C) Automated Protocol Interface"] },
+];
+
+const COWSAY = (msg: string) => {
+  const line = "─".repeat(msg.length + 2);
+  return `
+ ┌${line}┐
+ │ ${msg} │
+ └${line}┘
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||`;
+};
+
+const FIGLET_CHARS: Record<string, string[]> = {
+  a: ["  █  ", " █ █ ", "█████", "█   █", "█   █"],
+  b: ["████ ", "█   █", "████ ", "█   █", "████ "],
+  c: [" ████", "█    ", "█    ", "█    ", " ████"],
+  d: ["████ ", "█   █", "█   █", "█   █", "████ "],
+  e: ["█████", "█    ", "████ ", "█    ", "█████"],
+  f: ["█████", "█    ", "████ ", "█    ", "█    "],
+  g: [" ████", "█    ", "█  ██", "█   █", " ████"],
+  h: ["█   █", "█   █", "█████", "█   █", "█   █"],
+  i: ["█████", "  █  ", "  █  ", "  █  ", "█████"],
+  j: ["█████", "   █ ", "   █ ", "█  █ ", " ██  "],
+  k: ["█   █", "█  █ ", "███  ", "█  █ ", "█   █"],
+  l: ["█    ", "█    ", "█    ", "█    ", "█████"],
+  m: ["█   █", "██ ██", "█ █ █", "█   █", "█   █"],
+  n: ["█   █", "██  █", "█ █ █", "█  ██", "█   █"],
+  o: [" ███ ", "█   █", "█   █", "█   █", " ███ "],
+  p: ["████ ", "█   █", "████ ", "█    ", "█    "],
+  q: [" ███ ", "█   █", "█ █ █", "█  █ ", " ██ █"],
+  r: ["████ ", "█   █", "████ ", "█  █ ", "█   █"],
+  s: [" ████", "█    ", " ███ ", "    █", "████ "],
+  t: ["█████", "  █  ", "  █  ", "  █  ", "  █  "],
+  u: ["█   █", "█   █", "█   █", "█   █", " ███ "],
+  v: ["█   █", "█   █", " █ █ ", " █ █ ", "  █  "],
+  w: ["█   █", "█   █", "█ █ █", "██ ██", "█   █"],
+  x: ["█   █", " █ █ ", "  █  ", " █ █ ", "█   █"],
+  y: ["█   █", " █ █ ", "  █  ", "  █  ", "  █  "],
+  z: ["█████", "   █ ", "  █  ", " █   ", "█████"],
+  " ": ["     ", "     ", "     ", "     ", "     "],
+};
+
 interface TermLine {
-  type: "input" | "output" | "ascii" | "error" | "system";
+  type: "input" | "output" | "ascii" | "error" | "system" | "success" | "warning";
   content: string;
 }
 
@@ -95,6 +208,8 @@ const Contact = () => {
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [booted, setBooted] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [snakeGame, setSnakeGame] = useState<{ active: boolean; snake: number[][]; food: number[]; dir: string; score: number; interval?: ReturnType<typeof setInterval> } | null>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -102,12 +217,14 @@ const Contact = () => {
   useEffect(() => {
     if (isInView && !booted) {
       const bootLines: TermLine[] = [
-        { type: "system", content: "Booting portfolio-terminal v2.0..." },
-        { type: "system", content: "Loading kernel modules... OK" },
-        { type: "system", content: "Mounting filesystem... OK" },
-        { type: "system", content: "Starting services... OK" },
+        { type: "system", content: "▸ Booting portfolio-terminal v3.0..." },
+        { type: "system", content: "▸ Loading kernel modules.......... ✓" },
+        { type: "system", content: "▸ Mounting virtual filesystem...... ✓" },
+        { type: "system", content: "▸ Starting network services........ ✓" },
+        { type: "system", content: "▸ Initializing GPU acceleration.... ✓" },
+        { type: "system", content: "▸ Loading developer profile......... ✓" },
         { type: "ascii", content: ASCII_BANNER },
-        { type: "system", content: 'Welcome! Type "help" for available commands.\n' },
+        { type: "success", content: '✓ System ready. Type "help" for available commands.\n' },
       ];
       let i = 0;
       const interval = setInterval(() => {
@@ -118,7 +235,7 @@ const Contact = () => {
           clearInterval(interval);
           setBooted(true);
         }
-      }, 200);
+      }, 150);
       return () => clearInterval(interval);
     }
   }, [isInView, booted]);
@@ -152,11 +269,27 @@ const Contact = () => {
         const targetDir = fileSystem[targetPath] || fileSystem[targetPath.replace(/\/$/, "")];
         if (targetDir && typeof targetDir === "object") {
           const files = Object.keys(targetDir);
-          const formatted = files.map(f => f.endsWith("/") ? `\x1b[1m${f}\x1b[0m` : f).join("  ");
+          const formatted = files.map(f => {
+            if (f.endsWith("/")) return `📁 ${f}`;
+            if (f.startsWith(".")) return `🔒 ${f}`;
+            if (f.endsWith(".md")) return `📝 ${f}`;
+            if (f.endsWith(".json")) return `📋 ${f}`;
+            if (f.endsWith(".csv")) return `📊 ${f}`;
+            if (f.endsWith(".txt")) return `📄 ${f}`;
+            return `   ${f}`;
+          }).join("\n");
           newLines.push({ type: "output", content: formatted });
         } else if (dir) {
           const files = Object.keys(dir);
-          const formatted = files.join("  ");
+          const formatted = files.map(f => {
+            if (f.endsWith("/")) return `📁 ${f}`;
+            if (f.startsWith(".")) return `🔒 ${f}`;
+            if (f.endsWith(".md")) return `📝 ${f}`;
+            if (f.endsWith(".json")) return `📋 ${f}`;
+            if (f.endsWith(".csv")) return `📊 ${f}`;
+            if (f.endsWith(".txt")) return `📄 ${f}`;
+            return `   ${f}`;
+          }).join("\n");
           newLines.push({ type: "output", content: formatted });
         } else {
           newLines.push({ type: "error", content: `ls: cannot access '${args}': No such directory` });
@@ -181,19 +314,15 @@ const Contact = () => {
       }
 
       case "cd": {
-        if (!args || args === "~") {
-          setCwd("~");
-          break;
-        }
-        if (args === "..") {
-          setCwd("~");
-          break;
-        }
+        if (!args || args === "~") { setCwd("~"); break; }
+        if (args === "..") { setCwd("~"); break; }
         const target = args.startsWith("~/") ? args : `${cwd}/${args}`.replace(/\/$/, "");
         if (fileSystem[target]) {
           setCwd(target);
+          newLines.push({ type: "success", content: `→ ${target}` });
         } else if (dir?.[args + "/"] === "DIR") {
           setCwd(`${cwd}/${args}`);
+          newLines.push({ type: "success", content: `→ ${cwd}/${args}` });
         } else {
           newLines.push({ type: "error", content: `cd: ${args}: No such directory` });
         }
@@ -205,7 +334,7 @@ const Contact = () => {
         break;
 
       case "whoami":
-        newLines.push({ type: "output", content: "shubham-gupta // full-stack developer // 3+ yrs exp" });
+        newLines.push({ type: "output", content: "┌─ shubham-gupta\n├─ Role: Full-Stack Developer\n├─ Experience: " + Math.floor((Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24 * 365.25)) + "+ years\n├─ Status: Building No-Code Platform 🚀\n└─ Coffee: ████████████████ 100%" });
         break;
 
       case "tree":
@@ -216,21 +345,86 @@ const Contact = () => {
         newLines.push({ type: "output", content: NEOFETCH });
         break;
 
+      case "uptime": {
+        const ms = Date.now() - new Date("2021-08-01").getTime();
+        const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        newLines.push({ type: "output", content: `up ${days} days, ${hours} hours — engineering since Aug 2021\n\nMilestones:\n├─ Day    0: Started at MountBlue Technologies\n├─ Day  487: Joined Credilio as Senior Engineer\n├─ Day ${days}: Still shipping code 🚀` });
+        break;
+      }
+
+      case "skills":
+        newLines.push({ type: "output", content: `
+ Frontend  ████████████████████░  95%
+ Backend   ███████████████░░░░░░  75%
+ Cloud/AWS ████████████████░░░░░  80%
+ DevOps    ██████████████░░░░░░░  70%
+ UI/UX     ████████████████░░░░░  80%
+ Coffee    ████████████████████░ 100%` });
+        break;
+
+      case "weather":
+        newLines.push({ type: "output", content: `
+┌─────────────────────────────────────┐
+│  🌤  Coding Weather Report          │
+├─────────────────────────────────────┤
+│  Temperature: 🔥 Hot (shipping)     │
+│  Wind: 💨 Strong tailwind(css)      │
+│  Visibility: 👓 Clear (TypeScript)  │
+│  Humidity: 💧 Low (clean code)      │
+│  Forecast: 🚀 Deploy-ready          │
+│  Alert: ⚠️  Friday deploy incoming  │
+└─────────────────────────────────────┘` });
+        break;
+
+      case "find": {
+        if (!args) { newLines.push({ type: "error", content: "find: missing pattern" }); break; }
+        const results: string[] = [];
+        Object.entries(fileSystem).forEach(([path, files]) => {
+          if (typeof files === "object") {
+            Object.keys(files).forEach(f => {
+              if (f.toLowerCase().includes(args.toLowerCase())) {
+                results.push(`${path}/${f}`);
+              }
+            });
+          }
+        });
+        newLines.push({ type: "output", content: results.length ? results.join("\n") : `No files matching '${args}'` });
+        break;
+      }
+
+      case "grep": {
+        if (!args) { newLines.push({ type: "error", content: "grep: missing search text" }); break; }
+        const grepResults: string[] = [];
+        Object.entries(fileSystem).forEach(([path, files]) => {
+          if (typeof files === "object") {
+            Object.entries(files).forEach(([fname, content]) => {
+              if (content !== "DIR" && content.toLowerCase().includes(args.toLowerCase())) {
+                const matchLine = content.split("\n").find(l => l.toLowerCase().includes(args.toLowerCase()));
+                grepResults.push(`${path}/${fname}: ${matchLine?.trim()}`);
+              }
+            });
+          }
+        });
+        newLines.push({ type: "output", content: grepResults.length ? grepResults.join("\n") : `No matches for '${args}'` });
+        break;
+      }
+
       case "email":
       case "mail":
-        newLines.push({ type: "system", content: "→ Opening mail client for shubhamedu.01@gmail.com..." });
+        newLines.push({ type: "success", content: "→ Opening mail client for shubhamedu.01@gmail.com..." });
         window.open("mailto:shubhamedu.01@gmail.com");
         break;
 
       case "github":
       case "gh":
-        newLines.push({ type: "system", content: "→ Opening github.com/10shubham01..." });
+        newLines.push({ type: "success", content: "→ Opening github.com/10shubham01..." });
         window.open("https://github.com/10shubham01", "_blank");
         break;
 
       case "linkedin":
       case "li":
-        newLines.push({ type: "system", content: "→ Opening linkedin.com/in/10shubham01..." });
+        newLines.push({ type: "success", content: "→ Opening linkedin.com/in/10shubham01..." });
         window.open("https://www.linkedin.com/in/10shubham01", "_blank");
         break;
 
@@ -240,13 +434,17 @@ const Contact = () => {
 
       case "hack": {
         const hackLines = [
-          "Initiating breach sequence...",
-          "████████████████████████████ 100%",
-          "Bypassing firewall... ACCESS GRANTED",
-          "Decrypting portfolio data...",
+          "🔓 Initiating breach sequence...",
+          "████████████████████████████████ 100%",
+          "✓ Bypassing firewall......... ACCESS GRANTED",
+          "✓ Decrypting portfolio data.. COMPLETE",
+          "✓ Extracting secrets......... FOUND",
           "",
           "Just kidding 😄 But here's my email: shubhamedu.01@gmail.com",
           "Let's build something amazing together!",
+          "",
+          "💡 Tip: I'm currently building a no-code platform.",
+          "   Interested? Type 'cat resume.md' for more.",
         ];
         newLines.push({ type: "system", content: hackLines.join("\n") });
         break;
@@ -254,23 +452,92 @@ const Contact = () => {
 
       case "matrix":
         newLines.push({ type: "ascii", content: MATRIX_RAIN.join("\n") });
-        newLines.push({ type: "system", content: "\nWake up, Neo... The Matrix has you.\nFollow the white rabbit. 🐇" });
+        newLines.push({ type: "success", content: "\nWake up, Neo... The Matrix has you.\nFollow the white rabbit. 🐇\nType 'hack' to go deeper..." });
+        break;
+
+      case "fortune":
+        newLines.push({ type: "output", content: FORTUNES[Math.floor(Math.random() * FORTUNES.length)] });
+        break;
+
+      case "joke":
+        newLines.push({ type: "output", content: JOKES[Math.floor(Math.random() * JOKES.length)] });
+        break;
+
+      case "cowsay":
+        newLines.push({ type: "ascii", content: COWSAY(args || "Moo! Hire Shubham!") });
+        break;
+
+      case "figlet": {
+        const text = (args || "hello").toLowerCase().slice(0, 12);
+        const rows = [0, 1, 2, 3, 4].map(row =>
+          text.split("").map(ch => (FIGLET_CHARS[ch] || FIGLET_CHARS[" "])[row]).join(" ")
+        );
+        newLines.push({ type: "ascii", content: rows.join("\n") });
+        break;
+      }
+
+      case "quiz": {
+        const q = QUIZ_QUESTIONS[Math.floor(Math.random() * QUIZ_QUESTIONS.length)];
+        newLines.push({ type: "output", content: `❓ ${q.q}\n${q.options.join("\n")}\n\n(Answer: ${q.a})` });
+        break;
+      }
+
+      case "snake":
+        newLines.push({ type: "success", content: "🐍 Snake game started! Use W/A/S/D keys to move.\n   Eat the ● to grow. Type 'quit' to exit." });
+        setSnakeGame({
+          active: true,
+          snake: [[5, 5], [5, 4], [5, 3]],
+          food: [Math.floor(Math.random() * 10), Math.floor(Math.random() * 10)],
+          dir: "right",
+          score: 0,
+        });
+        break;
+
+      case "man": {
+        const manPages: Record<string, string> = {
+          ls: "LS(1)\n\nNAME\n  ls - list directory contents\n\nSYNOPSIS\n  ls [dir]\n\nDESCRIPTION\n  List files and directories. Shows emoji icons for file types.",
+          cat: "CAT(1)\n\nNAME\n  cat - concatenate and print files\n\nSYNOPSIS\n  cat <file>\n\nDESCRIPTION\n  Display contents of a file in the virtual filesystem.",
+          cd: "CD(1)\n\nNAME\n  cd - change directory\n\nSYNOPSIS\n  cd <dir>\n\nDESCRIPTION\n  Navigate the virtual filesystem. Use '..' to go up.",
+          hack: "HACK(1)\n\nNAME\n  hack - totally legit hacking tool\n\nWARNING\n  This command is 100% safe and mostly just for fun 😄",
+        };
+        newLines.push({ type: "output", content: manPages[args] || `No manual entry for '${args}'` });
+        break;
+      }
+
+      case "alias":
+        newLines.push({ type: "output", content: "Aliases:\n  gh    → github\n  li    → linkedin\n  mail  → email\n  cls   → clear" });
+        break;
+
+      case "banner":
+        newLines.push({ type: "ascii", content: ASCII_BANNER });
+        break;
+
+      case "theme":
+        document.documentElement.classList.toggle("dark");
+        newLines.push({ type: "success", content: `Theme toggled to ${document.documentElement.classList.contains("dark") ? "dark 🌙" : "light ☀️"}` });
         break;
 
       case "clear":
+      case "cls":
         setLines([]);
         return;
 
       case "sudo":
-        newLines.push({ type: "error", content: "Nice try! But you don't have root access here 😏" });
+        newLines.push({ type: "error", content: "⚠️ Nice try! But you don't have root access here 😏\nThis incident will be reported. (Just kidding)" });
         break;
 
       case "rm":
-        newLines.push({ type: "error", content: "rm: permission denied. This portfolio is indestructible 💪" });
+        newLines.push({ type: "error", content: "rm: permission denied. This portfolio is indestructible 💪\nTrust me, I've tried." });
         break;
 
       case "exit":
-        newLines.push({ type: "system", content: "logout\nYou can check out any time you like, but you can never leave 🎵" });
+      case "quit":
+        if (snakeGame?.active) {
+          setSnakeGame(null);
+          newLines.push({ type: "system", content: "Snake game ended." });
+        } else {
+          newLines.push({ type: "system", content: "logout\nYou can check out any time you like, but you can never leave 🎵" });
+        }
         break;
 
       case "date":
@@ -282,11 +549,40 @@ const Contact = () => {
         break;
 
       case "ping":
-        newLines.push({ type: "output", content: `PING ${args || "localhost"}\n64 bytes: time=0.042ms\n64 bytes: time=0.039ms\n--- ping statistics ---\n2 packets transmitted, 2 received, 0% packet loss` });
+        newLines.push({ type: "output", content: `PING ${args || "shubhamgupta.dev"}\n64 bytes: time=0.042ms ✓\n64 bytes: time=0.039ms ✓\n64 bytes: time=0.041ms ✓\n--- ping statistics ---\n3 packets transmitted, 3 received, 0% packet loss\navg latency: 0.041ms` });
         break;
 
       case "curl":
-        newLines.push({ type: "system", content: `Fetching ${args || "nothing"}...\n{"status":"hire_me","available":true,"coffee":"yes_please"}` });
+        newLines.push({ type: "system", content: `GET ${args || "shubhamgupta.dev/api"} HTTP/1.1\n\n{\n  "status": "hire_me",\n  "available": true,\n  "coffee": "yes_please",\n  "current_project": "no-code-platform",\n  "response_time": "< 24h"\n}` });
+        break;
+
+      case "top":
+      case "htop":
+        newLines.push({ type: "output", content: `
+PID  COMMAND          CPU%  MEM%  STATUS
+ 1   react-dev        45.2  128M  running
+ 2   typescript-lsp   12.8   64M  running
+ 3   tailwind-jit      8.4   32M  running
+ 4   vite-hmr          3.2   16M  running
+ 5   coffee-machine   99.9  ∞     critical
+ 6   imposter-syn.     0.1   1M   sleeping
+ 7   motivation       78.3   42M  running` });
+        break;
+
+      case "whoami2":
+      case "w":
+        newLines.push({ type: "output", content: "USER     TTY   LOGIN@  IDLE\nshubham  pts/0 now     0:00\nguest    pts/1 now     active ← that's you!" });
+        break;
+
+      case "cal": {
+        const now = new Date();
+        const month = now.toLocaleString("default", { month: "long" });
+        newLines.push({ type: "output", content: `     ${month} ${now.getFullYear()}\nSu Mo Tu We Th Fr Sa\n${Array.from({ length: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() }, (_, i) => String(i + 1).padStart(2, " ") + ((i + 1) === now.getDate() ? "←" : " ")).reduce((acc, d, i) => { const dayOfWeek = new Date(now.getFullYear(), now.getMonth(), i + 1).getDay(); if (i === 0) acc += "   ".repeat(dayOfWeek); acc += d; if (dayOfWeek === 6) acc += "\n"; return acc; }, "")}` });
+        break;
+      }
+
+      case "df":
+        newLines.push({ type: "output", content: "Filesystem    Size  Used  Avail  Use%  Mounted on\nportfolio     ∞     42K   ∞      0%    /\ncreativity    ∞     99%   1%     99%   /brain\ncoffee-tank   10L   9.8L  0.2L   98%   /energy" });
         break;
 
       default:
@@ -296,7 +592,7 @@ const Contact = () => {
     setLines((prev) => [...prev, ...newLines]);
     setCommandHistory((prev) => [...prev, input]);
     setHistoryIndex(-1);
-  }, [cwd, getCurrentDir, commandHistory]);
+  }, [cwd, getCurrentDir, commandHistory, snakeGame]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && userInput.trim()) {
@@ -323,7 +619,6 @@ const Contact = () => {
       }
     } else if (e.key === "Tab") {
       e.preventDefault();
-      // Tab completion
       const dir = getCurrentDir();
       if (dir && userInput.trim()) {
         const parts = userInput.trim().split(/\s+/);
@@ -333,7 +628,7 @@ const Contact = () => {
           parts[parts.length - 1] = matches[0];
           setUserInput(parts.join(" "));
         } else if (matches.length > 1) {
-          setLines(prev => [...prev, 
+          setLines(prev => [...prev,
             { type: "input", content: `${cwd} ❯ ${userInput}` },
             { type: "output", content: matches.join("  ") }
           ]);
@@ -350,8 +645,10 @@ const Contact = () => {
       case "input": return "text-foreground";
       case "output": return "text-muted-foreground";
       case "ascii": return "text-foreground/60";
-      case "error": return "text-destructive";
+      case "error": return "text-red-400";
       case "system": return "text-muted-foreground/80";
+      case "success": return "text-emerald-400";
+      case "warning": return "text-amber-400";
     }
   };
 
@@ -364,72 +661,102 @@ const Contact = () => {
         initial={{ opacity: 0, y: 30 }}
         animate={isInView ? { opacity: 1, y: 0 } : {}}
         transition={{ duration: 0.6 }}
-        className="max-w-3xl relative"
+        className="max-w-4xl relative"
       >
         <p className="text-base font-body text-muted-foreground leading-relaxed mb-8">
-          I built a fully interactive terminal for you. Navigate my file system, read about my work, or just type <span className="text-foreground font-mono">help</span>.
+          I built a fully interactive terminal. Navigate my file system, explore my work, play games, or just type <span className="text-foreground font-mono">help</span>. Try <span className="text-foreground font-mono">cowsay</span>, <span className="text-foreground font-mono">fortune</span>, or <span className="text-foreground font-mono">hack</span>.
         </p>
 
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={isInView ? { opacity: 1, scale: 1 } : {}}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="border border-border bg-background overflow-hidden"
-          onClick={() => inputRef.current?.focus()}
-        >
-          {/* Title bar */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
-            <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
-            <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/25" />
-            <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/15" />
-            <span className="ml-3 text-xs font-mono text-muted-foreground">
-              shubham@portfolio: {cwd}
-            </span>
-            <span className="ml-auto text-[10px] font-mono text-muted-foreground/40">
-              zsh — 80×24
-            </span>
-          </div>
-
-          {/* Terminal body */}
-          <div
-            ref={terminalRef}
-            className="p-4 font-mono text-sm space-y-0.5 h-[420px] overflow-y-auto scrollbar-thin"
+        <AnimatePresence>
+          <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className={`border border-border bg-background overflow-hidden transition-all duration-300 ${
+              isMaximized ? "fixed inset-4 z-50 rounded-lg shadow-2xl" : "relative"
+            }`}
+            onClick={() => inputRef.current?.focus()}
           >
-            {lines.map((line, i) => (
-              <motion.pre
-                key={i}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.1 }}
-                className={`${getLineColor(line.type)} whitespace-pre-wrap break-all leading-relaxed text-xs md:text-sm`}
-              >
-                {line.content}
-              </motion.pre>
-            ))}
+            {/* Title bar */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card select-none">
+              {/* Traffic lights */}
+              <button
+                onClick={(e) => { e.stopPropagation(); }}
+                className="w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 transition-colors cursor-pointer"
+                title="Close"
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); setLines([]); }}
+                className="w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors cursor-pointer"
+                title="Minimize (clear)"
+              />
+              <button
+                onClick={(e) => { e.stopPropagation(); setIsMaximized(!isMaximized); }}
+                className="w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 transition-colors cursor-pointer"
+                title="Maximize"
+              />
+              <span className="ml-3 text-xs font-mono text-muted-foreground">
+                shubham@portfolio: {cwd}
+              </span>
+              <span className="ml-auto text-[10px] font-mono text-muted-foreground/40 hidden sm:inline">
+                zsh — {isMaximized ? "fullscreen" : "80×24"} — v3.0
+              </span>
+            </div>
 
-            {/* Input line */}
-            {booted && (
-              <div className="flex gap-2 items-center pt-1">
-                <span className="text-muted-foreground text-xs shrink-0">{cwd} ❯</span>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={userInput}
-                  onChange={(e) => setUserInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder='type "help"...'
-                  autoFocus={false}
-                  className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/20 font-mono text-xs md:text-sm caret-foreground min-w-0"
-                />
-                <motion.span
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ duration: 0.8, repeat: Infinity, repeatType: "reverse" }}
-                  className="w-1.5 h-4 bg-foreground inline-block shrink-0"
-                />
-              </div>
-            )}
-          </div>
-        </motion.div>
+            {/* Terminal body */}
+            <div
+              ref={terminalRef}
+              className={`p-4 font-mono text-sm space-y-0.5 overflow-y-auto scrollbar-thin transition-all duration-300 ${
+                isMaximized ? "h-[calc(100%-44px)]" : "h-[450px]"
+              }`}
+            >
+              {lines.map((line, i) => (
+                <motion.pre
+                  key={i}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.08 }}
+                  className={`${getLineColor(line.type)} whitespace-pre-wrap break-all leading-relaxed text-xs md:text-sm`}
+                >
+                  {line.content}
+                </motion.pre>
+              ))}
+
+              {/* Input line */}
+              {booted && (
+                <div className="flex gap-2 items-center pt-1">
+                  <span className="text-emerald-400 text-xs shrink-0">{cwd} ❯</span>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder='type "help"...'
+                    autoFocus={false}
+                    className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/20 font-mono text-xs md:text-sm caret-foreground min-w-0"
+                  />
+                  <motion.span
+                    animate={{ opacity: [1, 0] }}
+                    transition={{ duration: 0.8, repeat: Infinity, repeatType: "reverse" }}
+                    className="w-1.5 h-4 bg-emerald-400 inline-block shrink-0"
+                  />
+                </div>
+              )}
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Maximized overlay */}
+        {isMaximized && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+            onClick={() => setIsMaximized(false)}
+          />
+        )}
 
         {/* Quick links */}
         <div className="flex gap-4 mt-6">

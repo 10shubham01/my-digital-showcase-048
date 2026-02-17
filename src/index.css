@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Poiret+One&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
 
 @layer base {
   :root {
@@ -36,7 +36,7 @@
 
     --radius: 0.5rem;
 
-    --font-heading: 'Poiret One', system-ui, sans-serif;
+    --font-heading: 'Bebas Neue', system-ui, sans-serif;
     --font-body: 'Space Grotesk', system-ui, sans-serif;
     --font-display: 'Instrument Serif', Georgia, serif;
     --font-mono: 'Space Mono', monospace;
