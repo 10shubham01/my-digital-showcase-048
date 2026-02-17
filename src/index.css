@@ -2,44 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
 
 @layer base {
   :root {
-    --background: 220 15% 4%;
-    --foreground: 40 10% 92%;
+    --background: 230 20% 4%;
+    --foreground: 200 20% 95%;
 
-    --card: 220 12% 7%;
-    --card-foreground: 40 10% 92%;
+    --card: 230 18% 7%;
+    --card-foreground: 200 20% 95%;
 
-    --popover: 220 12% 7%;
-    --popover-foreground: 40 10% 92%;
+    --popover: 230 18% 7%;
+    --popover-foreground: 200 20% 95%;
 
-    --primary: 40 10% 92%;
-    --primary-foreground: 220 15% 4%;
+    --primary: 200 20% 95%;
+    --primary-foreground: 230 20% 4%;
 
-    --secondary: 220 10% 12%;
-    --secondary-foreground: 40 8% 75%;
+    --secondary: 230 15% 12%;
+    --secondary-foreground: 190 15% 70%;
 
-    --muted: 220 8% 14%;
-    --muted-foreground: 220 5% 50%;
+    --muted: 230 12% 14%;
+    --muted-foreground: 220 10% 50%;
 
-    --accent: 25 80% 55%;
-    --accent-foreground: 25 10% 95%;
+    --accent: 185 80% 50%;
+    --accent-foreground: 230 20% 4%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 220 8% 15%;
-    --input: 220 8% 15%;
-    --ring: 25 80% 55%;
+    --border: 230 12% 14%;
+    --input: 230 12% 14%;
+    --ring: 185 80% 50%;
 
     --radius: 0.5rem;
 
-    --font-heading: 'Playfair Display', Georgia, serif;
+    --font-heading: 'Orbitron', 'Space Grotesk', system-ui, sans-serif;
     --font-body: 'Space Grotesk', system-ui, sans-serif;
 
-    --accent-glow: 25 90% 60%;
+    --accent-glow: 185 90% 55%;
+    --accent-secondary: 260 70% 60%;
+    --accent-tertiary: 320 70% 55%;
   }
 }
 
@@ -62,28 +64,54 @@
   }
 
   ::selection {
-    background: hsl(25 80% 55% / 0.3);
-    color: hsl(40 10% 95%);
+    background: hsl(185 80% 50% / 0.3);
+    color: hsl(200 20% 95%);
   }
 }
 
 @layer utilities {
   .text-gradient {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(25 80% 55%), hsl(40 60% 70%));
+    background-image: linear-gradient(135deg, hsl(185 80% 50%), hsl(260 70% 60%));
   }
 
   .text-gradient-subtle {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(40 10% 95%), hsl(220 5% 50%));
+    background-image: linear-gradient(135deg, hsl(200 20% 95%), hsl(220 10% 50%));
+  }
+
+  .text-gradient-vivid {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(90deg, hsl(185 80% 50%), hsl(260 70% 60%), hsl(320 70% 55%));
   }
 
   .border-gradient {
-    border-image: linear-gradient(135deg, hsl(25 80% 55% / 0.4), hsl(220 8% 15%)) 1;
+    border-image: linear-gradient(135deg, hsl(185 80% 50% / 0.4), hsl(260 70% 60% / 0.2)) 1;
   }
 
   .glow-accent {
-    box-shadow: 0 0 40px hsl(25 80% 55% / 0.15), 0 0 80px hsl(25 80% 55% / 0.05);
+    box-shadow: 0 0 30px hsl(185 80% 50% / 0.2), 0 0 60px hsl(185 80% 50% / 0.05);
+  }
+
+  .glow-accent-strong {
+    box-shadow: 0 0 20px hsl(185 80% 50% / 0.3), 0 0 60px hsl(260 70% 60% / 0.1), 0 0 100px hsl(185 80% 50% / 0.05);
+  }
+
+  .bg-grid {
+    background-image: 
+      linear-gradient(hsl(185 80% 50% / 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(185 80% 50% / 0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .scanline {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      hsl(185 80% 50% / 0.03) 50%,
+      transparent 100%
+    );
+    background-size: 100% 4px;
   }
 }
 
@@ -104,4 +132,13 @@
 
 .animate-marquee-reverse {
   animation: marquee-reverse 35s linear infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px hsl(185 80% 50% / 0.2); }
+  50% { box-shadow: 0 0 40px hsl(185 80% 50% / 0.4), 0 0 80px hsl(260 70% 60% / 0.1); }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
 }
