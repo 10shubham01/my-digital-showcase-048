@@ -16,9 +16,9 @@ const Hero = () => {
           Full-Stack Developer
         </motion.p>
 
-        <h1 className="font-heading text-5xl md:text-7xl lg:text-8xl font-normal leading-[0.95] tracking-[0.15em] uppercase text-foreground mb-8">
-          <Alien text="Shubham" className="block" />
-          <span className="block font-display italic text-muted-foreground tracking-[0.05em] normal-case text-4xl md:text-6xl lg:text-7xl mt-2">
+        <h1 className="font-heading text-5xl md:text-7xl lg:text-8xl font-normal leading-[0.95] tracking-[0.15em] uppercase text-foreground mb-8 flex items-baseline gap-4 md:gap-6">
+          <Alien text="Shubham" />
+          <span className="font-display italic text-muted-foreground tracking-[0.05em] normal-case text-4xl md:text-6xl lg:text-7xl">
             <Alien text="Gupta" />
           </span>
         </h1>
@@ -33,29 +33,6 @@ const Hero = () => {
           frameworks. Engineering the future, one pixel at a time.
         </motion.p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1 }}
-          className="flex gap-6 mt-10"
-        >
-          <motion.a
-            href="#experience"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-            className="text-sm font-body border border-border px-6 py-3 text-foreground hover:bg-foreground hover:text-background transition-colors duration-300"
-          >
-            View Work
-          </motion.a>
-          <motion.a
-            href="#contact"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-            className="text-sm font-body px-6 py-3 bg-foreground text-background hover:bg-muted-foreground transition-colors duration-300"
-          >
-            Contact
-          </motion.a>
-        </motion.div>
       </div>
 
       <motion.div
