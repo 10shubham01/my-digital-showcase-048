@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ['Orbitron', 'Space Grotesk', 'system-ui', 'sans-serif'],
+        heading: ['Poiret One', 'Space Grotesk', 'system-ui', 'sans-serif'],
         body: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        display: ['Instrument Serif', 'Georgia', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -42,8 +43,6 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
-          secondary: "hsl(var(--accent-secondary))",
-          tertiary: "hsl(var(--accent-tertiary))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

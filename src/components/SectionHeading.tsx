@@ -1,5 +1,6 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import Alien from "./Alien";
 
 const SectionHeading = ({ title, number }: { title: string; number: string }) => {
   const ref = useRef(null);
@@ -13,14 +14,16 @@ const SectionHeading = ({ title, number }: { title: string; number: string }) =>
       transition={{ duration: 0.6 }}
       className="flex items-center gap-4 mb-12"
     >
-      <span className="text-xs font-body text-accent tracking-widest">{number}</span>
+      <span className="text-xs font-body text-muted-foreground tracking-widest">{number}</span>
       <motion.div
         initial={{ scaleX: 0 }}
         animate={isInView ? { scaleX: 1 } : {}}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="h-px flex-1 bg-accent/30 max-w-[60px] origin-left"
+        className="h-px flex-1 bg-border max-w-[60px] origin-left"
       />
-      <h2 className="font-heading text-3xl md:text-4xl text-foreground">{title}</h2>
+      <h2 className="font-heading text-3xl md:text-4xl text-foreground tracking-widest uppercase">
+        <Alien text={title} />
+      </h2>
     </motion.div>
   );
 };

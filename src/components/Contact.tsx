@@ -11,12 +11,8 @@ const commands = [
 const Contact = () => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const [visibleLines, setVisibleLines] = useState(0);
   const [userInput, setUserInput] = useState("");
   const [extraLines, setExtraLines] = useState<{ cmd: string; output: string }[]>([]);
-
-  // Animate terminal lines appearing
-  const totalLines = commands.length + extraLines.length;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && userInput.trim()) {
@@ -47,10 +43,6 @@ const Contact = () => {
 
   return (
     <section id="contact" className="py-24 md:py-32 px-6 md:px-12 lg:px-24 relative overflow-hidden">
-      {/* Ambient glows */}
-      <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-1/4 right-1/4 w-60 h-60 bg-accent-secondary/5 rounded-full blur-[80px] pointer-events-none" />
-
       <SectionHeading title="Get in Touch" number="03" />
 
       <motion.div
@@ -64,22 +56,19 @@ const Contact = () => {
           I built a terminal just for you. Type a command and hit enter.
         </p>
 
-        {/* Terminal */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={isInView ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="border border-border bg-background/80 backdrop-blur-sm overflow-hidden glow-accent"
+          className="border border-border bg-background overflow-hidden"
         >
-          {/* Terminal header */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/50">
-            <div className="w-3 h-3 rounded-full bg-accent-tertiary/60" />
-            <div className="w-3 h-3 rounded-full bg-accent/40" />
-            <div className="w-3 h-3 rounded-full bg-accent-secondary/40" />
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
+            <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
+            <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/25" />
+            <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground/15" />
             <span className="ml-3 text-xs font-body text-muted-foreground">contact@shubham ~ </span>
           </div>
 
-          {/* Terminal body */}
           <div className="p-4 font-mono text-sm space-y-2 min-h-[200px]">
             {commands.map((line, i) => (
               <motion.div
@@ -87,10 +76,9 @@ const Contact = () => {
                 initial={{ opacity: 0, x: -10 }}
                 animate={isInView ? { opacity: 1, x: 0 } : {}}
                 transition={{ duration: 0.3, delay: 0.4 + i * 0.4 }}
-                onAnimationComplete={() => setVisibleLines((v) => Math.max(v, i + 1))}
               >
                 <div className="flex gap-2">
-                  <span className="text-accent">❯</span>
+                  <span className="text-foreground">❯</span>
                   <span className="text-foreground">{line.cmd}</span>
                 </div>
                 <motion.div
@@ -104,43 +92,40 @@ const Contact = () => {
               </motion.div>
             ))}
 
-            {/* Extra user-typed lines */}
             {extraLines.map((line, i) => (
               <div key={`extra-${i}`}>
                 <div className="flex gap-2">
-                  <span className="text-accent">❯</span>
+                  <span className="text-foreground">❯</span>
                   <span className="text-foreground">{line.cmd}</span>
                 </div>
                 <div className="text-muted-foreground pl-5">{line.output}</div>
               </div>
             ))}
 
-            {/* Input line */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={isInView ? { opacity: 1 } : {}}
               transition={{ duration: 0.3, delay: 0.4 + commands.length * 0.4 }}
               className="flex gap-2 items-center"
             >
-              <span className="text-accent">❯</span>
+              <span className="text-foreground">❯</span>
               <input
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder='type "help" for commands...'
-                className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/40 font-mono text-sm caret-accent"
+                className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/30 font-mono text-sm caret-foreground"
               />
               <motion.span
                 animate={{ opacity: [1, 0] }}
                 transition={{ duration: 0.8, repeat: Infinity, repeatType: "reverse" }}
-                className="w-2 h-4 bg-accent inline-block"
+                className="w-2 h-4 bg-foreground inline-block"
               />
             </motion.div>
           </div>
         </motion.div>
 
-        {/* Quick links below terminal */}
         <div className="flex gap-4 mt-6">
           {[
             { label: "GitHub", href: "https://github.com/10shubham01" },
@@ -152,20 +137,14 @@ const Contact = () => {
               href={link.href}
               target={link.label !== "Email" ? "_blank" : undefined}
               rel="noopener noreferrer"
-              whileHover={{ y: -2, color: "hsl(185, 80%, 50%)" }}
-              className="text-xs font-body text-muted-foreground transition-colors duration-300 flex items-center gap-1 border border-border px-3 py-1.5 hover:border-accent/40"
+              whileHover={{ y: -2 }}
+              className="text-xs font-body text-muted-foreground transition-colors duration-300 border border-border px-3 py-1.5 hover:border-foreground/30 hover:text-foreground"
             >
               {link.label} ↗
             </motion.a>
           ))}
         </div>
       </motion.div>
-
-      <div className="mt-24 pt-8 border-t border-border relative">
-        <p className="text-xs font-body text-muted-foreground">
-          © {new Date().getFullYear()} Shubham Gupta. Crafted with precision.
-        </p>
-      </div>
     </section>
   );
 };
