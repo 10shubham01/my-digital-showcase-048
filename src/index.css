@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&family=Poiret+One&display=swap");
 
 @layer base {
   :root {
@@ -36,10 +36,10 @@
 
     --radius: 0.5rem;
 
-    --font-heading: 'Bebas Neue', system-ui, sans-serif;
-    --font-body: 'Space Grotesk', system-ui, sans-serif;
-    --font-display: 'Instrument Serif', Georgia, serif;
-    --font-mono: 'Space Mono', monospace;
+    --font-heading: "Poiret One", system-ui, sans-serif;
+    --font-body: "Space Grotesk", system-ui, sans-serif;
+    --font-display: "Instrument Serif", Georgia, serif;
+    --font-mono: "Space Mono", monospace;
   }
 
   .dark {
@@ -87,7 +87,12 @@
     font-family: var(--font-body);
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: var(--font-heading);
   }
 
@@ -104,7 +109,7 @@
   }
 
   .bg-grid {
-    background-image: 
+    background-image:
       linear-gradient(hsl(0 0% 92% / 0.03) 1px, transparent 1px),
       linear-gradient(90deg, hsl(0 0% 92% / 0.03) 1px, transparent 1px);
     background-size: 60px 60px;
@@ -113,13 +118,21 @@
 
 /* Marquee */
 @keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes marquee-reverse {
-  0% { transform: translateX(-50%); }
-  100% { transform: translateX(0); }
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 
 .animate-marquee {
