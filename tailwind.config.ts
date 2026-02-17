@@ -14,9 +14,10 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ['Poiret One', 'Space Grotesk', 'system-ui', 'sans-serif'],
+        heading: ['Poiret One', 'system-ui', 'sans-serif'],
         body: ['Space Grotesk', 'system-ui', 'sans-serif'],
         display: ['Instrument Serif', 'Georgia', 'serif'],
+        mono: ['Space Mono', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",

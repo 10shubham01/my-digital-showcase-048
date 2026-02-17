@@ -2,10 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Poiret+One&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poiret+One&family=Space+Grotesk:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
 
 @layer base {
   :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 8%;
+
+    --card: 0 0% 96%;
+    --card-foreground: 0 0% 8%;
+
+    --popover: 0 0% 96%;
+    --popover-foreground: 0 0% 8%;
+
+    --primary: 0 0% 8%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 35%;
+
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 45%;
+
+    --accent: 0 0% 8%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 0 0% 8%;
+
+    --radius: 0.5rem;
+
+    --font-heading: 'Poiret One', system-ui, sans-serif;
+    --font-body: 'Space Grotesk', system-ui, sans-serif;
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  .dark {
     --background: 0 0% 3%;
     --foreground: 0 0% 92%;
 
@@ -33,12 +70,6 @@
     --border: 0 0% 12%;
     --input: 0 0% 12%;
     --ring: 0 0% 92%;
-
-    --radius: 0.5rem;
-
-    --font-heading: 'Poiret One', 'Space Grotesk', system-ui, sans-serif;
-    --font-body: 'Space Grotesk', system-ui, sans-serif;
-    --font-display: 'Instrument Serif', Georgia, serif;
   }
 }
 

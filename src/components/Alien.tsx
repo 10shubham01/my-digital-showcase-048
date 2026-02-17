@@ -61,7 +61,7 @@ function HoverableLetter({ letter, getRandomCharacter, index, className }: Hover
   return (
     <span
       ref={ref}
-      className={cn("inline-block cursor-default transition-colors duration-150", className)}
+      className={cn("inline-block cursor-default transition-colors duration-150 font-mono", className)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
