@@ -5,7 +5,8 @@ const Marquee = () => {
   const repeated = text.repeat(4);
 
   return (
-    <div className="py-12 overflow-hidden border-y border-border bg-card/50">
+    <div className="py-12 overflow-hidden border-y border-border bg-card/50 relative">
+      <div className="absolute inset-0 bg-gradient-to-r from-accent/5 via-transparent to-accent-secondary/5 pointer-events-none" />
       <motion.div
         animate={{ x: [0, -2000] }}
         transition={{ duration: 20, repeat: Infinity, ease: "linear" }}

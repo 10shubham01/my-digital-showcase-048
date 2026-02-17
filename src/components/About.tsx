@@ -62,7 +62,7 @@ const About = () => {
               <motion.span
                 key={skill}
                 variants={skillVariants}
-                whileHover={{ scale: 1.1, borderColor: "hsl(25, 80%, 55%)" }}
+                whileHover={{ scale: 1.1, borderColor: "hsl(185, 80%, 50%)" }}
                 className="text-sm font-body text-secondary-foreground bg-secondary px-3 py-1.5 border border-border cursor-default transition-colors"
               >
                 {skill}

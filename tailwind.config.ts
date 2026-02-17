@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ['Playfair Display', 'Georgia', 'serif'],
+        heading: ['Orbitron', 'Space Grotesk', 'system-ui', 'sans-serif'],
         body: ['Space Grotesk', 'system-ui', 'sans-serif'],
       },
       colors: {
@@ -42,6 +42,8 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+          secondary: "hsl(var(--accent-secondary))",
+          tertiary: "hsl(var(--accent-tertiary))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
