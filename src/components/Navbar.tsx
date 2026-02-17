@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import ThemeToggle from "./ThemeToggle";
 
 const Navbar = () => {
   return (
@@ -16,13 +17,16 @@ const Navbar = () => {
         SG.
       </motion.a>
 
-      <motion.a
-        href="#contact"
-        whileHover={{ scale: 1.03 }}
-        className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-300"
-      >
-        Get in touch
-      </motion.a>
+      <div className="flex items-center gap-4">
+        <ThemeToggle />
+        <motion.a
+          href="#contact"
+          whileHover={{ scale: 1.03 }}
+          className="text-sm font-body text-muted-foreground hover:text-foreground transition-colors duration-300"
+        >
+          Get in touch
+        </motion.a>
+      </div>
     </motion.nav>
   );
 };
