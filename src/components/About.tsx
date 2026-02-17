@@ -1,6 +1,7 @@
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import SectionHeading from "./SectionHeading";
+import Alien from "./Alien";
 
 const About = () => {
   const ref = useRef(null);
@@ -39,8 +40,7 @@ const About = () => {
           </p>
           <p className="text-base font-body text-muted-foreground leading-relaxed">
             I specialize in building interfaces that are fast, scalable, and user-friendly —
-            the kind that turn ideas into polished products. Scaling front-end architectures,
-            optimizing performance, creating smooth user experiences — been there, done that.
+            the kind that turn ideas into polished products.
           </p>
         </motion.div>
         <div>
@@ -48,9 +48,9 @@ const About = () => {
             initial={{ opacity: 0 }}
             animate={isInView ? { opacity: 1 } : {}}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="text-xs font-body text-accent tracking-widest uppercase mb-6"
+            className="text-xs font-body text-muted-foreground tracking-widest uppercase mb-6"
           >
-            Technologies
+            <Alien text="Technologies" />
           </motion.p>
           <motion.div
             variants={containerVariants}
@@ -62,8 +62,8 @@ const About = () => {
               <motion.span
                 key={skill}
                 variants={skillVariants}
-                whileHover={{ scale: 1.1, borderColor: "hsl(185, 80%, 50%)" }}
-                className="text-sm font-body text-secondary-foreground bg-secondary px-3 py-1.5 border border-border cursor-default transition-colors"
+                whileHover={{ scale: 1.1 }}
+                className="text-sm font-body text-secondary-foreground bg-secondary px-3 py-1.5 border border-border cursor-default transition-colors hover:bg-foreground hover:text-background"
               >
                 {skill}
               </motion.span>
