@@ -15,12 +15,12 @@ interface HoverableLetterProps {
 }
 
 const katakana = [
-  "ア","イ","ウ","エ","オ","カ","キ","ク","ケ","コ",
-  "サ","シ","ス","セ","ソ","タ","チ","ツ","テ","ト",
-  "ナ","ニ","ヌ","ネ","ノ","ハ","ヒ","フ","ヘ","ホ",
-  "マ","ミ","ム","メ","モ","ヤ","ユ","ヨ","ー","ラ",
-  "リ","ル","レ","ロ","ワ","ヰ","ヱ","ヲ","ン",
-];
+"ア", "イ", "ウ", "エ", "オ", "カ", "キ", "ク", "ケ", "コ",
+"サ", "シ", "ス", "セ", "ソ", "タ", "チ", "ツ", "テ", "ト",
+"ナ", "ニ", "ヌ", "ネ", "ノ", "ハ", "ヒ", "フ", "ヘ", "ホ",
+"マ", "ミ", "ム", "メ", "モ", "ヤ", "ユ", "ヨ", "ー", "ラ",
+"リ", "ル", "レ", "ロ", "ワ", "ヰ", "ヱ", "ヲ", "ン"];
+
 
 function HoverableLetter({ letter, getRandomCharacter, index, className }: HoverableLetterProps) {
   const [randomLetter, setRandomLetter] = useState(letter);
@@ -61,13 +61,13 @@ function HoverableLetter({ letter, getRandomCharacter, index, className }: Hover
   return (
     <span
       ref={ref}
-      className={cn("inline-block cursor-default transition-colors duration-150 font-mono", className)}
+      className={cn("inline-block cursor-default transition-colors duration-150 font-serif", className)}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+      onMouseLeave={handleMouseLeave}>
+
       {randomLetter === " " ? "\u00A0" : randomLetter}
-    </span>
-  );
+    </span>);
+
 }
 
 function Alien({ text, className = "" }: AlienProps) {
@@ -78,17 +78,17 @@ function Alien({ text, className = "" }: AlienProps) {
 
   return (
     <span className={cn("inline-flex flex-wrap", className)}>
-      {text.split("").map((letter, index) => (
-        <HoverableLetter
-          key={index}
-          letter={letter}
-          getRandomCharacter={getRandomCharacter}
-          index={index}
-          className={className}
-        />
-      ))}
-    </span>
-  );
+      {text.split("").map((letter, index) =>
+      <HoverableLetter
+        key={index}
+        letter={letter}
+        getRandomCharacter={getRandomCharacter}
+        index={index}
+        className={className} />
+
+      )}
+    </span>);
+
 }
 
 export default Alien;
