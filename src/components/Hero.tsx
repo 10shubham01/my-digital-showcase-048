@@ -1,24 +1,34 @@
 import { motion } from "framer-motion";
 import Alien from "./Alien";
+import { useVisitorCount } from "@/hooks/useVisitorCount";
 
 const Hero = () => {
   const currentYear = new Date().getFullYear();
   const yearsOfExperience = Math.floor(
     (Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24 * 365.25),
   );
+  const visitorCount = useVisitorCount();
 
   return (
     <section className="min-h-screen flex flex-col justify-between px-6 md:px-12 lg:px-24 pl-12 md:pl-16 lg:pl-28 pt-28 pb-8 relative overflow-hidden">
-      {/* Top: Role label */}
+      {/* Top: Role label + Open to Work badge */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.2 }}
-        className="relative"
+        className="relative flex items-center gap-4"
       >
         <p className="text-xs font-mono text-muted-foreground tracking-[0.3em] uppercase">
           Full-Stack Developer — {currentYear}
         </p>
+        <motion.span
+          animate={{ boxShadow: ["0 0 0 0 hsl(152 69% 45% / 0.4)", "0 0 0 8px hsl(152 69% 45% / 0)", "0 0 0 0 hsl(152 69% 45% / 0)"] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="inline-flex items-center gap-1.5 bg-accent-green/10 border border-accent-green/30 text-accent-green text-[10px] font-mono tracking-widest uppercase px-3 py-1 rounded-full"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-green animate-pulse" />
+          Open to Work
+        </motion.span>
       </motion.div>
 
       {/* Center: Name - massive, full-width */}
@@ -62,26 +72,48 @@ const Hero = () => {
         </div>
       </div>
 
-      {/* Bottom: Scroll indicator + stats */}
+      {/* Bottom: Scroll indicator + Hire Me CTA + stats */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 1.2 }}
         className="relative flex items-end justify-between"
       >
-        <motion.p
-          animate={{ y: [0, 6, 0] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          className="text-xs font-mono text-muted-foreground tracking-widest uppercase"
-        >
-          Scroll ↓
-        </motion.p>
+        <div className="flex items-end gap-6">
+          <motion.p
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+            className="text-xs font-mono text-muted-foreground tracking-widest uppercase"
+          >
+            Scroll ↓
+          </motion.p>
+
+          {/* Hire Me CTA */}
+          <motion.a
+            href="#contact"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.97 }}
+            className="group relative inline-flex items-center gap-2 bg-accent-pop/10 hover:bg-accent-pop/20 border border-accent-pop/30 hover:border-accent-pop/50 text-accent-pop px-5 py-2.5 rounded-full font-mono text-xs tracking-widest uppercase transition-all duration-300"
+          >
+            <motion.span
+              animate={{ x: [0, 3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="inline-block"
+            >
+              →
+            </motion.span>
+            Hire Me
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-accent-pop animate-ping" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-accent-pop" />
+          </motion.a>
+        </div>
 
         <div className="flex gap-12">
           {[
             { label: "Years Exp.", value: `${yearsOfExperience}+` },
             { label: "Projects", value: "10+" },
             { label: "Frameworks", value: "5+" },
+            { label: "Visitors", value: visitorCount !== null ? visitorCount.toLocaleString() : "—" },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
