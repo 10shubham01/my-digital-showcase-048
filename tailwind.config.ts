@@ -3,7 +3,18 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
-  prefix: "",
+  safelist: [
+    { pattern: /text-accent-(blue|cyan|green|orange|pop)/ },
+    { pattern: /bg-accent-(blue|cyan|green|orange|pop)/, variants: ["hover"] },
+    { pattern: /border-accent-(blue|cyan|green|orange|pop)/, variants: ["hover"] },
+    "hover:bg-accent-blue/10", "hover:bg-accent-cyan/10", "hover:bg-accent-green/10", "hover:bg-accent-orange/10", "hover:bg-accent-pop/10",
+    "hover:border-accent-blue/40", "hover:border-accent-cyan/40", "hover:border-accent-green/40", "hover:border-accent-orange/40", "hover:border-accent-pop/40",
+    "hover:text-accent-blue", "hover:text-accent-cyan", "hover:text-accent-green", "hover:text-accent-orange", "hover:text-accent-pop",
+    "hover:bg-accent-blue/5", "hover:bg-accent-cyan/5", "hover:bg-accent-green/5", "hover:bg-accent-orange/5", "hover:bg-accent-pop/5",
+    "hover:border-accent-blue/30", "hover:border-accent-cyan/30", "hover:border-accent-green/30", "hover:border-accent-orange/30", "hover:border-accent-pop/30",
+    "text-accent-blue/30", "text-accent-cyan/30", "text-accent-green/30", "text-accent-orange/30", "text-accent-pop/30",
+    "group-hover:text-accent-blue", "group-hover:text-accent-cyan", "group-hover:text-accent-green", "group-hover:text-accent-orange", "group-hover:text-accent-pop",
+  ],
   theme: {
     container: {
       center: true,
