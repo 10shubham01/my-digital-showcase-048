@@ -6,6 +6,7 @@ import Experience from "../components/Experience";
 import Contact from "../components/Contact";
 import MarqueeFooter from "../components/MarqueeFooter";
 import Preloader from "../components/Preloader";
+import GridOverlay from "../components/GridOverlay";
 
 const Index = () => {
   const [loading, setLoading] = useState(true);
@@ -15,6 +16,7 @@ const Index = () => {
   return (
     <div className="bg-background text-foreground min-h-screen">
       {loading && <Preloader onComplete={handleComplete} />}
+      <GridOverlay />
       <Navbar />
       <Hero />
       <About />

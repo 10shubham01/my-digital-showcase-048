@@ -57,7 +57,7 @@ const experiences = [
 
 const Experience = () => {
   return (
-    <section id="experience" className="py-24 md:py-32 px-6 md:px-12 lg:px-24 bg-card relative">
+    <section id="experience" className="py-24 md:py-32 px-6 md:px-12 lg:px-24 pl-12 md:pl-16 lg:pl-28 bg-card relative">
       <SectionHeading title="Experience" number="02" />
       <div className="max-w-5xl space-y-0 relative">
         {experiences.map((exp, i) => (
