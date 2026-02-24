@@ -2,6 +2,7 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import SectionHeading from "./SectionHeading";
 import Alien from "./Alien";
+import TechIcons from "./TechIcons";
 
 const About = () => {
   const ref = useRef(null);
@@ -25,7 +26,7 @@ const About = () => {
   };
 
   return (
-    <section id="about" className="py-24 md:py-32 px-6 md:px-12 lg:px-24">
+    <section id="about" className="py-24 md:py-32 px-6 md:px-12 lg:px-24 pl-12 md:pl-16 lg:pl-28">
       <SectionHeading title="About" number="01" />
       <div ref={ref} className="grid md:grid-cols-2 gap-16 max-w-5xl">
         <motion.div
@@ -58,16 +59,24 @@ const About = () => {
             animate={isInView ? "visible" : "hidden"}
             className="flex flex-wrap gap-2"
           >
-            {skills.map((skill) => (
-              <motion.span
-                key={skill}
-                variants={skillVariants}
-                whileHover={{ scale: 1.1 }}
-                className="text-sm font-body text-secondary-foreground bg-secondary px-3 py-1.5 border border-border cursor-default transition-colors hover:bg-foreground hover:text-background"
-              >
-                {skill}
-              </motion.span>
-            ))}
+            {skills.map((skill) => {
+              const IconComponent = TechIcons[skill];
+              return (
+                <motion.span
+                  key={skill}
+                  variants={skillVariants}
+                  whileHover={{ scale: 1.08, y: -2 }}
+                  className="text-sm font-body text-secondary-foreground bg-secondary px-3 py-1.5 border border-border cursor-default transition-colors hover:bg-foreground hover:text-background flex items-center gap-2 group"
+                >
+                  {IconComponent && (
+                    <span className="opacity-70 group-hover:opacity-100 transition-opacity">
+                      <IconComponent />
+                    </span>
+                  )}
+                  {skill}
+                </motion.span>
+              );
+            })}
           </motion.div>
         </div>
       </div>

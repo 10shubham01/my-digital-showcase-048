@@ -36,10 +36,17 @@
 
     --radius: 0.5rem;
 
-    --font-heading: "Poiret One", system-ui, sans-serif;
+    --font-heading: "Bebas Neue", system-ui, sans-serif;
     --font-body: "Poiret One", system-ui, sans-serif;
     --font-display: "Instrument Serif", Georgia, serif;
     --font-mono: "Space Mono", monospace;
+
+    /* Color accents */
+    --accent-blue: 220 90% 56%;
+    --accent-cyan: 187 85% 53%;
+    --accent-green: 152 69% 45%;
+    --accent-orange: 25 95% 53%;
+    --accent-pop: 262 83% 58%;
   }
 
   .dark {
@@ -70,6 +77,13 @@
     --border: 0 0% 12%;
     --input: 0 0% 12%;
     --ring: 0 0% 92%;
+
+    /* Color accents - brighter for dark mode */
+    --accent-blue: 220 100% 65%;
+    --accent-cyan: 187 100% 60%;
+    --accent-green: 152 80% 55%;
+    --accent-orange: 25 100% 60%;
+    --accent-pop: 262 90% 68%;
   }
 }
 

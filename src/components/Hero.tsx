@@ -6,7 +6,7 @@ const Hero = () => {
   const yearsOfExperience = Math.floor((Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24 * 365.25));
 
   return (
-    <section className="min-h-screen flex flex-col justify-between px-6 md:px-12 lg:px-24 pt-28 pb-8 relative overflow-hidden">
+    <section className="min-h-screen flex flex-col justify-between px-6 md:px-12 lg:px-24 pl-12 md:pl-16 lg:pl-28 pt-28 pb-8 relative overflow-hidden">
       <div className="absolute inset-0 bg-grid pointer-events-none" />
 
       {/* Top: Role label */}
@@ -31,6 +31,7 @@ const Hero = () => {
             className="font-heading text-[12vw] md:text-[10vw] lg:text-[9vw] font-normal leading-[0.85] tracking-[0.12em] uppercase text-foreground"
           >
             <Alien text="Shubham" />
+            <span className="inline-block w-2 h-2 md:w-3 md:h-3 rounded-full bg-accent-pop ml-2 align-top" />
           </motion.h1>
           <motion.div
             initial={{ opacity: 0, y: 40 }}
