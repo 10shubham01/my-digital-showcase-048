@@ -313,8 +313,11 @@ const Contact = () => {
       let i = 0;
       const interval = setInterval(() => {
         if (i < bootLines.length) {
-          setLines((prev) => [...prev, bootLines[i]]);
+          const line = bootLines[i];
           i++;
+          if (line) {
+            setLines((prev) => [...prev, line]);
+          }
         } else {
           clearInterval(interval);
           setBooted(true);
@@ -944,14 +947,16 @@ Coding Weather Report
                 isMaximized ? "h-[calc(100%-44px)]" : "h-[450px]"
               }`}
             >
-              {lines.map((line, i) => (
-                <pre
-                  key={i}
-                  className={`${getLineColor(line.type)} whitespace-pre-wrap break-all leading-relaxed text-xs md:text-sm`}
-                >
-                  {line.content}
-                </pre>
-              ))}
+              {lines.map((line, i) =>
+                line ? (
+                  <pre
+                    key={i}
+                    className={`${getLineColor(line.type)} whitespace-pre-wrap break-all leading-relaxed text-xs md:text-sm`}
+                  >
+                    {line.content}
+                  </pre>
+                ) : null
+              )}
 
               {/* Editor mode */}
               {editor.active && booted && (
