@@ -3,12 +3,12 @@ import Alien from "./Alien";
 
 const Hero = () => {
   const currentYear = new Date().getFullYear();
-  const yearsOfExperience = Math.floor((Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+  const yearsOfExperience = Math.floor(
+    (Date.now() - new Date("2021-08-01").getTime()) / (1000 * 60 * 60 * 24 * 365.25),
+  );
 
   return (
     <section className="min-h-screen flex flex-col justify-between px-6 md:px-12 lg:px-24 pl-12 md:pl-16 lg:pl-28 pt-28 pb-8 relative overflow-hidden">
-      <div className="absolute inset-0 bg-grid pointer-events-none" />
-
       {/* Top: Role label */}
       <motion.div
         initial={{ opacity: 0 }}
