@@ -639,8 +639,8 @@ Coding Weather Report
 
       case "email":
       case "mail":
-        newLines.push({ type: "system", content: "Opening mail client for shubhamedu.01@gmail.com..." });
-        window.open("mailto:shubhamedu.01@gmail.com");
+        newLines.push({ type: "system", content: "Opening Gmail compose for shubhamedu.01@gmail.com..." });
+        window.open("https://mail.google.com/mail/?view=cm&fs=1&to=shubhamedu.01@gmail.com&su=" + encodeURIComponent("Hey Shubham — Let's Build Something Awesome 🚀") + "&body=" + encodeURIComponent("Hi Shubham,\n\nI stumbled upon your portfolio and I'm genuinely impressed by your work.\n\nI'd love to chat about a potential collaboration!\n\nCheers,\n[Your Name]"), "_blank");
         break;
 
       case "github":
@@ -1030,7 +1030,7 @@ Coding Weather Report
           {[
             { label: "GitHub", href: "https://github.com/10shubham01" },
             { label: "LinkedIn", href: "https://www.linkedin.com/in/10shubham01" },
-            { label: "Email", href: "mailto:shubhamedu.01@gmail.com" },
+            { label: "Email", href: "https://mail.google.com/mail/?view=cm&fs=1&to=shubhamedu.01@gmail.com&su=" + encodeURIComponent("Hey Shubham — Let's Build Something Awesome 🚀") + "&body=" + encodeURIComponent("Hi Shubham,\n\nI came across your portfolio and loved your work!\n\nLet's connect.\n\nCheers,\n[Your Name]") },
           ].map((link) => (
             <motion.a
               key={link.label}
