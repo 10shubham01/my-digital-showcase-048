@@ -10,7 +10,10 @@ const socials = [
 
 const MarqueeFooter = forwardRef<HTMLElement>((_, ref) => {
   const [emailModal, setEmailModal] = useState(false);
-  const [emailData, setEmailData] = useState({ subject: "", body: "" });
+  const [emailData, setEmailData] = useState({
+    subject: "Hey Shubham — Let's Build Something Awesome 🚀",
+    body: "Hi Shubham,\n\nI stumbled upon your portfolio and I'm genuinely impressed by your work. The way you blend clean code with creative design is exactly what we're looking for.\n\nI'd love to chat about a potential collaboration — whether it's a freelance project, a full-time role, or just geeking out over code.\n\nLet me know when you're free for a quick call!\n\nCheers,\n[Your Name]"
+  });
 
   const line1 = "FRONTEND DEVELOPER • FULL-STACK ENGINEER • UI/UX ENTHUSIAST • ";
   const line2 = "REACT • VUE • NEXT.JS • TYPESCRIPT • NODE.JS • AWS • ";
@@ -23,10 +26,9 @@ const MarqueeFooter = forwardRef<HTMLElement>((_, ref) => {
   };
 
   const handleSendEmail = () => {
-    const mailtoUrl = `mailto:shubhamedu.01@gmail.com?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}`;
-    window.open(mailtoUrl, "_self");
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=shubhamedu.01@gmail.com&su=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}`;
+    window.open(gmailUrl, "_blank");
     setEmailModal(false);
-    setEmailData({ subject: "", body: "" });
   };
 
   return (
