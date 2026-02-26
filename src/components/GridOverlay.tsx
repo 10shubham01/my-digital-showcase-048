@@ -49,7 +49,7 @@ const GridOverlay = () => {
       </div>
 
       {/* Left ruler - narrower on mobile, full on desktop */}
-      <div className="absolute top-0 md:top-5 left-0 w-5 md:w-8 bottom-0 bg-background/80 backdrop-blur-sm border-r border-foreground/5 overflow-hidden">
+      <div className="absolute top-0 md:top-5 left-0 w-5 md:w-8 bottom-0 bg-background/80 backdrop-blur-sm border-r border-foreground/5 overflow-hidden z-50">
         {verticalTicks.map((px) => (
           <div key={`v-${px}`} className="absolute right-0 flex items-center" style={{ top: `${px}px` }}>
             <span className="text-[6px] md:text-[7px] font-mono text-muted-foreground/40 mr-0.5 md:mr-1 leading-none hidden md:inline">
