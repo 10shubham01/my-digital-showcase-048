@@ -875,8 +875,16 @@ Coding Weather Report
 
   const prompt = jsRepl ? "> " : `${cwd} $ `;
 
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=shubhamedu.01@gmail.com&su=${encodeURIComponent("Hey Shubham — Let's Build Something Awesome 🚀")}&body=${encodeURIComponent("Hi Shubham,\n\nI stumbled upon your portfolio and I'm genuinely impressed by your work.\n\nI'd love to chat about a potential collaboration.\n\nCheers,\n[Your Name]")}`;
+
+  const contactCards = [
+    { label: "Email", value: "shubhamedu.01@gmail.com", href: gmailUrl, icon: "✉", color: "accent-green" },
+    { label: "GitHub", value: "10shubham01", href: "https://github.com/10shubham01", icon: "⌘", color: "accent-orange" },
+    { label: "LinkedIn", value: "in/10shubham01", href: "https://www.linkedin.com/in/10shubham01", icon: "◆", color: "accent-blue" },
+  ];
+
   return (
-    <section id="contact" className="py-24 md:py-32 px-6 md:px-12 lg:px-24 relative overflow-hidden">
+    <section id="contact" className="py-24 md:py-32 px-4 md:px-12 lg:px-24 pl-10 md:pl-16 lg:pl-28 relative overflow-hidden">
       <SectionHeading title="Get in Touch" number="03" />
 
       <motion.div
@@ -886,156 +894,225 @@ Coding Weather Report
         transition={{ duration: 0.6 }}
         className="max-w-4xl relative"
       >
-        <p className="text-base font-body text-muted-foreground leading-relaxed mb-8">
-          Fully interactive terminal — navigate my filesystem, run JavaScript, or type <span className="text-foreground font-mono">help</span>. Try <span className="text-foreground font-mono">vi filename</span> to edit files.
-        </p>
-
-        <AnimatePresence>
-          <motion.div
-            layout
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className={`border border-border bg-background overflow-hidden transition-all duration-300 ${
-              isMaximized ? "fixed inset-4 z-50 shadow-2xl" : "relative"
-            }`}
-            onClick={() => {
-              if (editor.active) {
-                editorRef.current?.focus();
-              } else {
-                inputRef.current?.focus();
-              }
-            }}
-          >
-            {/* Title bar */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card select-none">
-              <button
-                onClick={(e) => { e.stopPropagation(); if (isMaximized) setIsMaximized(false); }}
-                className="w-3 h-3 rounded-full bg-[#ff5f57] hover:brightness-90 transition-all cursor-pointer"
-                title="Close"
-              />
-              <button
-                onClick={(e) => { e.stopPropagation(); setLines([]); }}
-                className="w-3 h-3 rounded-full bg-[#febc2e] hover:brightness-90 transition-all cursor-pointer"
-                title="Minimize (clear)"
-              />
-              <button
-                onClick={(e) => { e.stopPropagation(); setIsMaximized(!isMaximized); }}
-                className="w-3 h-3 rounded-full bg-[#28c840] hover:brightness-90 transition-all cursor-pointer"
-                title={isMaximized ? "Exit fullscreen (ESC)" : "Maximize"}
-              />
-              <span className="ml-3 text-xs font-mono text-muted-foreground">
-                {editor.active
-                  ? `${editor.fileName} -- EDITING`
-                  : jsRepl
-                  ? "node -- REPL"
-                  : `shubham@portfolio: ${cwd}`}
-              </span>
-              <span className="ml-auto text-[10px] font-mono text-muted-foreground/40 hidden sm:inline">
-                {editor.active
-                  ? "Ctrl+S save | ESC discard"
-                  : jsRepl
-                  ? "node v18.17.0"
-                  : `zsh -- ${isMaximized ? "fullscreen (ESC to exit)" : "80x24"}`}
-              </span>
-            </div>
-
-            {/* Terminal body */}
-            <div
-              ref={terminalRef}
-              className={`p-4 font-mono text-sm space-y-0.5 overflow-y-auto scrollbar-thin transition-all duration-300 ${
-                isMaximized ? "h-[calc(100%-44px)]" : "h-[450px]"
-              }`}
-            >
-              {lines.map((line, i) =>
-                line ? (
-                  <pre
-                    key={i}
-                    className={`${getLineColor(line.type)} whitespace-pre-wrap break-all leading-relaxed text-xs md:text-sm`}
-                  >
-                    {line.content}
-                  </pre>
-                ) : null
-              )}
-
-              {/* Editor mode */}
-              {editor.active && booted && (
-                <div className="mt-2 border border-border/50 bg-card/50 p-1">
-                  <div className="flex justify-between items-center px-2 py-1 border-b border-border/30 text-[10px] text-muted-foreground/60">
-                    <span>-- EDITING: {editor.fileName} --</span>
-                    <span>Ctrl+S save | ESC discard</span>
-                  </div>
-                  <textarea
-                    ref={editorRef}
-                    value={editor.lines.join("\n")}
-                    onChange={(e) => setEditor(prev => ({ ...prev, lines: e.target.value.split("\n") }))}
-                    onKeyDown={handleEditorKeyDown}
-                    className="w-full bg-transparent text-foreground outline-none font-mono text-xs md:text-sm p-2 min-h-[200px] resize-y caret-foreground leading-relaxed"
-                    spellCheck={false}
-                    autoFocus
-                  />
-                  <div className="flex gap-2 px-2 py-1 border-t border-border/30">
-                    <button
-                      onClick={saveEditorFile}
-                      className="text-[10px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 border border-border/50 hover:border-foreground/30 transition-colors"
-                    >
-                      [Ctrl+S] Save
-                    </button>
-                    <button
-                      onClick={discardEditor}
-                      className="text-[10px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 border border-border/50 hover:border-foreground/30 transition-colors"
-                    >
-                      [ESC] Discard
-                    </button>
-                    <span className="ml-auto text-[10px] text-muted-foreground/40 font-mono">
-                      {editor.lines.length} lines | {editor.lines.join("\n").length} chars
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Input line (hidden when editor is active) */}
-              {booted && !editor.active && (
-                <div className="flex gap-2 items-center pt-1">
-                  <span className="text-muted-foreground text-xs shrink-0">{prompt}</span>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={jsRepl ? "type JS code..." : 'type "help"...'}
-                    autoFocus={false}
-                    className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/20 font-mono text-xs md:text-sm caret-foreground min-w-0"
-                  />
-                  <span className="w-1.5 h-4 bg-foreground inline-block shrink-0 animate-pulse" />
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Maximized overlay */}
-        {isMaximized && (
-          <motion.div
+        {/* Mobile: Creative contact cards */}
+        <div className="md:hidden space-y-6 mb-8">
+          <motion.p
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
-            onClick={() => setIsMaximized(false)}
-          />
-        )}
+            animate={isInView ? { opacity: 1 } : {}}
+            transition={{ delay: 0.2 }}
+            className="text-base font-body text-muted-foreground leading-relaxed"
+          >
+            Got a project in mind? Let's turn your idea into something <span className="text-accent-pop">extraordinary</span>.
+          </motion.p>
+
+          {/* Animated contact cards */}
+          <div className="space-y-3">
+            {contactCards.map((card, i) => (
+              <motion.a
+                key={card.label}
+                href={card.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, x: -30 }}
+                animate={isInView ? { opacity: 1, x: 0 } : {}}
+                transition={{ delay: 0.3 + i * 0.15, type: "spring", stiffness: 200 }}
+                whileTap={{ scale: 0.97 }}
+                className={`group flex items-center gap-4 p-4 border border-border hover:border-${card.color}/40 hover:bg-${card.color}/5 transition-all duration-300`}
+              >
+                <motion.span
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, delay: i * 0.5 }}
+                  className={`text-xl text-${card.color}`}
+                >
+                  {card.icon}
+                </motion.span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">{card.label}</p>
+                  <p className={`text-sm font-body text-foreground truncate group-hover:text-${card.color} transition-colors`}>{card.value}</p>
+                </div>
+                <motion.span
+                  className="text-muted-foreground/40 group-hover:text-foreground/60 transition-colors text-sm"
+                  whileHover={{ x: 4 }}
+                >
+                  →
+                </motion.span>
+              </motion.a>
+            ))}
+          </div>
+
+          {/* Hire me CTA for mobile */}
+          <motion.a
+            href={gmailUrl}
+            target="_blank"
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ delay: 0.8 }}
+            whileTap={{ scale: 0.97 }}
+            className="block text-center py-4 border border-accent-pop/30 bg-accent-pop/5 text-accent-pop font-mono text-xs tracking-widest uppercase transition-all duration-300"
+          >
+            <motion.span
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="inline-block"
+            >
+              🚀 Let's Build Together
+            </motion.span>
+          </motion.a>
+        </div>
+
+        {/* Desktop: Terminal */}
+        <div className="hidden md:block">
+          <p className="text-base font-body text-muted-foreground leading-relaxed mb-8">
+            Fully interactive terminal — navigate my filesystem, run JavaScript, or type <span className="text-foreground font-mono">help</span>. Try <span className="text-foreground font-mono">vi filename</span> to edit files.
+          </p>
+
+          <AnimatePresence>
+            <motion.div
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className={`border border-border bg-background overflow-hidden transition-all duration-300 ${
+                isMaximized ? "fixed inset-4 z-50 shadow-2xl" : "relative"
+              }`}
+              onClick={() => {
+                if (editor.active) {
+                  editorRef.current?.focus();
+                } else {
+                  inputRef.current?.focus();
+                }
+              }}
+            >
+              {/* Title bar */}
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card select-none">
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (isMaximized) setIsMaximized(false); }}
+                  className="w-3 h-3 rounded-full bg-[#ff5f57] hover:brightness-90 transition-all cursor-pointer"
+                  title="Close"
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); setLines([]); }}
+                  className="w-3 h-3 rounded-full bg-[#febc2e] hover:brightness-90 transition-all cursor-pointer"
+                  title="Minimize (clear)"
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); setIsMaximized(!isMaximized); }}
+                  className="w-3 h-3 rounded-full bg-[#28c840] hover:brightness-90 transition-all cursor-pointer"
+                  title={isMaximized ? "Exit fullscreen (ESC)" : "Maximize"}
+                />
+                <span className="ml-3 text-xs font-mono text-muted-foreground">
+                  {editor.active
+                    ? `${editor.fileName} -- EDITING`
+                    : jsRepl
+                    ? "node -- REPL"
+                    : `shubham@portfolio: ${cwd}`}
+                </span>
+                <span className="ml-auto text-[10px] font-mono text-muted-foreground/40 hidden sm:inline">
+                  {editor.active
+                    ? "Ctrl+S save | ESC discard"
+                    : jsRepl
+                    ? "node v18.17.0"
+                    : `zsh -- ${isMaximized ? "fullscreen (ESC to exit)" : "80x24"}`}
+                </span>
+              </div>
+
+              {/* Terminal body */}
+              <div
+                ref={terminalRef}
+                className={`p-4 font-mono text-sm space-y-0.5 overflow-y-auto scrollbar-thin transition-all duration-300 ${
+                  isMaximized ? "h-[calc(100%-44px)]" : "h-[450px]"
+                }`}
+              >
+                {lines.map((line, i) =>
+                  line ? (
+                    <pre
+                      key={i}
+                      className={`${getLineColor(line.type)} whitespace-pre-wrap break-all leading-relaxed text-xs md:text-sm`}
+                    >
+                      {line.content}
+                    </pre>
+                  ) : null
+                )}
+
+                {/* Editor mode */}
+                {editor.active && booted && (
+                  <div className="mt-2 border border-border/50 bg-card/50 p-1">
+                    <div className="flex justify-between items-center px-2 py-1 border-b border-border/30 text-[10px] text-muted-foreground/60">
+                      <span>-- EDITING: {editor.fileName} --</span>
+                      <span>Ctrl+S save | ESC discard</span>
+                    </div>
+                    <textarea
+                      ref={editorRef}
+                      value={editor.lines.join("\n")}
+                      onChange={(e) => setEditor(prev => ({ ...prev, lines: e.target.value.split("\n") }))}
+                      onKeyDown={handleEditorKeyDown}
+                      className="w-full bg-transparent text-foreground outline-none font-mono text-xs md:text-sm p-2 min-h-[200px] resize-y caret-foreground leading-relaxed"
+                      spellCheck={false}
+                      autoFocus
+                    />
+                    <div className="flex gap-2 px-2 py-1 border-t border-border/30">
+                      <button
+                        onClick={saveEditorFile}
+                        className="text-[10px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 border border-border/50 hover:border-foreground/30 transition-colors"
+                      >
+                        [Ctrl+S] Save
+                      </button>
+                      <button
+                        onClick={discardEditor}
+                        className="text-[10px] font-mono text-muted-foreground hover:text-foreground px-2 py-0.5 border border-border/50 hover:border-foreground/30 transition-colors"
+                      >
+                        [ESC] Discard
+                      </button>
+                      <span className="ml-auto text-[10px] text-muted-foreground/40 font-mono">
+                        {editor.lines.length} lines | {editor.lines.join("\n").length} chars
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Input line (hidden when editor is active) */}
+                {booted && !editor.active && (
+                  <div className="flex gap-2 items-center pt-1">
+                    <span className="text-muted-foreground text-xs shrink-0">{prompt}</span>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={jsRepl ? "type JS code..." : 'type "help"...'}
+                      autoFocus={false}
+                      className="flex-1 bg-transparent text-foreground outline-none placeholder:text-muted-foreground/20 font-mono text-xs md:text-sm caret-foreground min-w-0"
+                    />
+                    <span className="w-1.5 h-4 bg-foreground inline-block shrink-0 animate-pulse" />
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Maximized overlay */}
+          {isMaximized && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+              onClick={() => setIsMaximized(false)}
+            />
+          )}
+        </div>
 
         {/* Quick links */}
-        <div className="flex gap-4 mt-6">
+        <div className="hidden md:flex gap-4 mt-6">
           {[
             { label: "GitHub", href: "https://github.com/10shubham01" },
             { label: "LinkedIn", href: "https://www.linkedin.com/in/10shubham01" },
-            { label: "Email", href: "https://mail.google.com/mail/?view=cm&fs=1&to=shubhamedu.01@gmail.com&su=" + encodeURIComponent("Hey Shubham — Let's Build Something Awesome 🚀") + "&body=" + encodeURIComponent("Hi Shubham,\n\nI came across your portfolio and loved your work!\n\nLet's connect.\n\nCheers,\n[Your Name]") },
+            { label: "Email", href: gmailUrl },
           ].map((link) => (
             <motion.a
               key={link.label}
               href={link.href}
-              target={link.label !== "Email" ? "_blank" : undefined}
+              target="_blank"
               rel="noopener noreferrer"
               whileHover={{ y: -2 }}
               className="text-xs font-body text-muted-foreground transition-colors duration-300 border border-border px-3 py-1.5 hover:border-foreground/30 hover:text-foreground"
