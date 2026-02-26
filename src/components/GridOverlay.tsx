@@ -26,7 +26,7 @@ const GridOverlay = () => {
       />
 
       {/* Top ruler - hidden on mobile */}
-      <div className="absolute top-0 left-8 right-0 h-5 bg-background/80 backdrop-blur-sm border-b border-foreground/5  flex items-end overflow-hidden">
+      <div className="absolute top-0 left-0 right-0 h-5 bg-background/80 backdrop-blur-sm border-b border-foreground/5  flex items-end overflow-hidden">
         {horizontalTicks.map((px) => (
           <div
             key={`h-${px}`}
