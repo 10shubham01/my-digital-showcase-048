@@ -86,7 +86,7 @@ const Experience = () => {
   const [active, setActive] = useState(0);
 
   return (
-    <section id="experience" className="py-24 md:py-32 px-6 md:px-12 lg:px-24 pl-12 md:pl-16 lg:pl-28 relative">
+    <section id="experience" className="py-24 md:py-32 px-4 md:px-12 lg:px-24 pl-10 md:pl-16 lg:pl-28 relative">
       <SectionHeading title="Experience" number="02" />
 
       {/* Role selector tabs */}
