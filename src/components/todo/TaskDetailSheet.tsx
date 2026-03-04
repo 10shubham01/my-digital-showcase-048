@@ -5,19 +5,22 @@ import {
   useChecklist, useAddChecklistItem, useToggleChecklistItem, useDeleteChecklistItem,
   useAttachments, useUploadAttachment, useDeleteAttachment,
   useUpdateTask, useDeleteTask,
-  type Task, type TaskStatus, type TaskPriority,
+  type Task, type TaskPriority,
 } from "@/hooks/useTasks";
-import { STATUS_CONFIG, PRIORITY_CONFIG } from "./TaskCard";
+import type { ProjectStatus } from "@/hooks/useProjectStatuses";
 
 interface TaskDetailSheetProps {
   task: Task;
+  statuses: ProjectStatus[];
   onClose: () => void;
 }
 
-const STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "review", "done"];
 const PRIORITIES: TaskPriority[] = ["low", "medium", "high", "urgent"];
+const PRIORITY_CONFIG: Record<TaskPriority, { icon: string }> = {
+  low: { icon: "↓" }, medium: { icon: "→" }, high: { icon: "↑" }, urgent: { icon: "⚡" },
+};
 
-const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
+const TaskDetailSheet = ({ task, statuses, onClose }: TaskDetailSheetProps) => {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || "");
   const [newCheckItem, setNewCheckItem] = useState("");
@@ -32,6 +35,8 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
   const { data: attachments = [] } = useAttachments(task.id);
   const uploadAttachment = useUploadAttachment();
   const deleteAttachment = useDeleteAttachment();
+
+  const currentStatus = statuses.find((s) => s.slug === task.status);
 
   const saveField = (field: string, value: any) => {
     updateTask.mutate({ id: task.id, [field]: value } as any);
@@ -56,7 +61,6 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
 
   return (
     <>
-      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -64,8 +68,6 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
         onClick={onClose}
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
       />
-
-      {/* Sheet */}
       <motion.div
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
@@ -78,7 +80,7 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
           <div className="flex items-center gap-3">
             <div
               className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: STATUS_CONFIG[task.status].color }}
+              style={{ backgroundColor: currentStatus?.color || "#6b7280" }}
             />
             <span className="text-xs font-mono text-muted-foreground">
               {task.id.slice(0, 8)}
@@ -108,33 +110,32 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => title !== task.title && saveField("title", title)}
-            className="w-full text-xl font-heading tracking-wider bg-transparent outline-none"
+            className="w-full text-xl font-semibold tracking-wide bg-transparent outline-none border-none"
           />
 
-          {/* Status & Priority */}
-          <div className="flex gap-3">
-            <div className="flex-1 space-y-1.5">
-              <label className="text-[11px] uppercase tracking-widest text-muted-foreground">Status</label>
-              <div className="flex flex-wrap gap-1.5">
-                {STATUSES.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => saveField("status", s)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                      task.status === s ? "ring-1 ring-foreground/30" : "opacity-50 hover:opacity-100"
-                    }`}
-                    style={{
-                      backgroundColor: STATUS_CONFIG[s].color + "18",
-                      color: STATUS_CONFIG[s].color,
-                    }}
-                  >
-                    {STATUS_CONFIG[s].label}
-                  </button>
-                ))}
-              </div>
+          {/* Status - dynamic from project statuses */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] uppercase tracking-widest text-muted-foreground">Status</label>
+            <div className="flex flex-wrap gap-1.5">
+              {statuses.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => saveField("status", s.slug)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                    task.status === s.slug ? "ring-1 ring-foreground/30" : "opacity-50 hover:opacity-100"
+                  }`}
+                  style={{
+                    backgroundColor: s.color + "18",
+                    color: s.color,
+                  }}
+                >
+                  {s.name}
+                </button>
+              ))}
             </div>
           </div>
 
+          {/* Priority */}
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-widest text-muted-foreground">Priority</label>
             <div className="flex gap-1.5">
@@ -159,7 +160,7 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
               type="date"
               value={task.due_date || ""}
               onChange={(e) => saveField("due_date", e.target.value || null)}
-              className="bg-muted rounded-lg px-3 py-2 text-sm outline-none w-full"
+              className="bg-muted rounded-lg px-3 py-2.5 text-sm outline-none w-full border-none"
             />
           </div>
 
@@ -172,7 +173,7 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
               onBlur={() => description !== (task.description || "") && saveField("description", description)}
               placeholder="Add a description..."
               rows={4}
-              className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none resize-none"
+              className="w-full bg-muted rounded-lg px-3 py-2.5 text-sm outline-none resize-none border-none"
             />
           </div>
 
@@ -201,10 +202,8 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
                 <div key={item.id} className="flex items-center gap-2 group">
                   <button
                     onClick={() => toggleCheckItem.mutate({ id: item.id, is_completed: !item.is_completed, task_id: task.id })}
-                    className={`w-4 h-4 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
-                      item.is_completed
-                        ? "border-transparent"
-                        : "border-border hover:border-foreground/40"
+                    className={`w-4 h-4 rounded flex items-center justify-center transition-colors flex-shrink-0 ${
+                      item.is_completed ? "" : "border border-border hover:border-foreground/40"
                     }`}
                     style={item.is_completed ? { backgroundColor: "hsl(var(--accent-green))" } : {}}
                   >
@@ -235,7 +234,7 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
                 value={newCheckItem}
                 onChange={(e) => setNewCheckItem(e.target.value)}
                 placeholder="Add item..."
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 border-none"
               />
             </form>
           </div>
@@ -248,10 +247,7 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
 
             <div className="space-y-1.5">
               {attachments.map((att) => (
-                <div
-                  key={att.id}
-                  className="flex items-center gap-3 bg-muted rounded-lg px-3 py-2 group"
-                >
+                <div key={att.id} className="flex items-center gap-3 bg-muted rounded-lg px-3 py-2 group">
                   {att.file_type?.startsWith("image/") ? (
                     <ImageIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                   ) : (
@@ -274,13 +270,7 @@ const TaskDetailSheet = ({ task, onClose }: TaskDetailSheetProps) => {
               ))}
             </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleFileUpload}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" multiple onChange={handleFileUpload} className="hidden" />
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, LogOut, FolderKanban, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Trash2, LogOut, FolderKanban, ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import { useProjects, useCreateProject, useDeleteProject, type Project } from "@/hooks/useProjects";
+import FolderIcon from "./FolderIcon";
 
 interface ProjectSidebarProps {
   selectedProject: string | null;
   onSelectProject: (id: string) => void;
   onSignOut: () => void;
+  onOpenSettings: () => void;
 }
 
 const PROJECT_COLORS = [
@@ -14,21 +16,18 @@ const PROJECT_COLORS = [
   "#f97316", "#eab308", "#22c55e", "#06b6d4",
 ];
 
-const PROJECT_ICONS = ["📁", "🚀", "💡", "🎯", "⚡", "🔥", "💎", "🌟", "🎨", "📱"];
-
-const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut }: ProjectSidebarProps) => {
+const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut, onOpenSettings }: ProjectSidebarProps) => {
   const { data: projects = [], isLoading } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [color, setColor] = useState(PROJECT_COLORS[0]);
-  const [icon, setIcon] = useState(PROJECT_ICONS[0]);
   const [collapsed, setCollapsed] = useState(false);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
-    await createProject.mutateAsync({ name: name.trim(), color, icon });
+    await createProject.mutateAsync({ name: name.trim(), color, icon: "📁" });
     setName("");
     setShowCreate(false);
   };
@@ -43,7 +42,7 @@ const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut }: Project
         {!collapsed && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-2">
             <FolderKanban className="w-5 h-5" style={{ color: "hsl(var(--accent-pop))" }} />
-            <span className="font-heading text-lg tracking-wider">PROJECTS</span>
+            <span className="text-lg font-semibold tracking-wide">Projects</span>
           </motion.div>
         )}
         <button onClick={() => setCollapsed(!collapsed)} className="text-muted-foreground hover:text-foreground p-1">
@@ -65,7 +64,7 @@ const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut }: Project
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
-            <span className="text-lg flex-shrink-0">{p.icon}</span>
+            <FolderIcon color={p.color} size={18} />
             {!collapsed && (
               <>
                 <span className="flex-1 truncate text-sm font-medium">{p.name}</span>
@@ -103,7 +102,7 @@ const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut }: Project
                   className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
                   autoFocus
                 />
-                <div className="flex gap-1 flex-wrap">
+                <div className="flex gap-1.5 flex-wrap">
                   {PROJECT_COLORS.map((c) => (
                     <button
                       key={c}
@@ -111,17 +110,6 @@ const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut }: Project
                       className={`w-5 h-5 rounded-full transition-transform ${color === c ? "scale-125 ring-2 ring-ring" : ""}`}
                       style={{ backgroundColor: c }}
                     />
-                  ))}
-                </div>
-                <div className="flex gap-1 flex-wrap">
-                  {PROJECT_ICONS.map((ic) => (
-                    <button
-                      key={ic}
-                      onClick={() => setIcon(ic)}
-                      className={`w-7 h-7 rounded text-sm flex items-center justify-center transition-all ${icon === ic ? "bg-muted ring-1 ring-ring" : "hover:bg-muted/50"}`}
-                    >
-                      {ic}
-                    </button>
                   ))}
                 </div>
                 <div className="flex gap-2">
@@ -144,8 +132,15 @@ const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut }: Project
         </div>
       )}
 
-      {/* Sign out */}
-      <div className="p-3 border-t border-border">
+      {/* Bottom actions */}
+      <div className="p-3 border-t border-border space-y-1">
+        <button
+          onClick={onOpenSettings}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Settings className="w-4 h-4" />
+          {!collapsed && "Settings"}
+        </button>
         <button
           onClick={onSignOut}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive transition-colors"
