@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Terminal as TerminalIcon, Filter } from "lucide-react";
-import { useTasks, useCreateTask, type TaskStatus, type TaskPriority } from "@/hooks/useTasks";
-import { useChecklist, useAttachments } from "@/hooks/useTasks";
+import { Plus, Search, Terminal as TerminalIcon } from "lucide-react";
+import { useTasks, useCreateTask } from "@/hooks/useTasks";
+import { useProjectStatuses, type ProjectStatus } from "@/hooks/useProjectStatuses";
 import type { Project } from "@/hooks/useProjects";
 import TaskTimeline from "./TaskTimeline";
 import TaskDetailSheet from "./TaskDetailSheet";
 import TodoTerminal from "./TodoTerminal";
+import FolderIcon from "./FolderIcon";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
@@ -14,18 +15,13 @@ interface TaskBoardProps {
   project: Project;
 }
 
-const STATUSES: TaskStatus[] = ["backlog", "todo", "in_progress", "review", "done"];
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  backlog: "Backlog", todo: "Todo", in_progress: "In Progress", review: "Review", done: "Done",
-};
-
 const TaskBoard = ({ project }: TaskBoardProps) => {
   const { data: tasks = [], isLoading } = useTasks(project.id);
+  const { data: statuses = [] } = useProjectStatuses(project.id);
   const createTask = useCreateTask();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<TaskStatus | "all">("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showTerminal, setShowTerminal] = useState(false);
   const [showNewTask, setShowNewTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -92,12 +88,18 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
     return counts;
   }, [tasks]);
 
+  const doneCount = useMemo(() => {
+    const doneStatus = statuses.find((s) => s.slug === "done");
+    return doneStatus ? (statusCounts[doneStatus.slug] || 0) : 0;
+  }, [statuses, statusCounts]);
+
   const handleCreateTask = async () => {
     if (!newTaskTitle.trim()) return;
+    const defaultStatus = filterStatus !== "all" ? filterStatus : (statuses[1]?.slug || statuses[0]?.slug || "todo");
     await createTask.mutateAsync({
       title: newTaskTitle.trim(),
       project_id: project.id,
-      status: filterStatus === "all" ? "todo" : filterStatus,
+      status: defaultStatus,
     });
     setNewTaskTitle("");
     setShowNewTask(false);
@@ -110,16 +112,10 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
       {/* Top bar */}
       <div className="px-6 py-4 border-b border-border flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
-          <motion.span 
-            className="text-2xl"
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
-          >
-            {project.icon}
-          </motion.span>
+          <FolderIcon color={project.color} size={24} />
           <div>
-            <h1 className="font-heading text-2xl tracking-wider">{project.name}</h1>
-            <p className="text-xs text-muted-foreground font-mono">{tasks.length} tasks · {statusCounts.done || 0} done</p>
+            <h1 className="text-2xl font-semibold tracking-wide">{project.name}</h1>
+            <p className="text-xs text-muted-foreground font-mono">{tasks.length} tasks · {doneCount} done</p>
           </div>
         </div>
 
@@ -139,7 +135,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowTerminal(true)}
             className="p-2 rounded-lg bg-muted hover:bg-foreground hover:text-background transition-colors"
-            title="Open Terminal (manage tasks via CLI)"
+            title="Open Terminal"
           >
             <TerminalIcon className="w-4 h-4" />
           </motion.button>
@@ -156,21 +152,32 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
         </div>
       </div>
 
-      {/* Status filter - horizontal scroll pills */}
+      {/* Status filter pills - dynamic from project statuses */}
       <div className="px-6 py-3 flex gap-1.5 overflow-x-auto border-b border-border">
-        {(["all", ...STATUSES] as const).map((s) => {
-          const isActive = filterStatus === s;
+        <motion.button
+          whileHover={{ y: -1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setFilterStatus("all")}
+          className={`px-3 py-1 rounded-full text-xs font-mono transition-all whitespace-nowrap ${
+            filterStatus === "all" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          ALL ({tasks.length})
+        </motion.button>
+        {statuses.map((s) => {
+          const isActive = filterStatus === s.slug;
           return (
             <motion.button
-              key={s}
+              key={s.id}
               whileHover={{ y: -1 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => setFilterStatus(s === "all" ? "all" : (filterStatus === s ? "all" : s))}
+              onClick={() => setFilterStatus(isActive ? "all" : s.slug)}
               className={`px-3 py-1 rounded-full text-xs font-mono transition-all whitespace-nowrap ${
-                isActive ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground"
+                isActive ? "text-background" : "bg-muted text-muted-foreground hover:text-foreground"
               }`}
+              style={isActive ? { backgroundColor: s.color } : {}}
             >
-              {s === "all" ? "ALL" : STATUS_LABELS[s].toUpperCase()} ({statusCounts[s] || 0})
+              {s.name.toUpperCase()} ({statusCounts[s.slug] || 0})
             </motion.button>
           );
         })}
@@ -220,6 +227,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
         {filteredTasks.length > 0 ? (
           <TaskTimeline
             tasks={filteredTasks}
+            statuses={statuses}
             checklistCounts={checklistCounts}
             attachmentCounts={attachmentCounts}
             onSelectTask={setSelectedTaskId}
@@ -230,33 +238,33 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center h-full text-center px-6"
           >
-            <motion.span 
+            <motion.span
               className="text-6xl mb-4 block"
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 2, repeat: Infinity }}
             >
               🎯
             </motion.span>
-            <h3 className="font-heading text-3xl mb-2">EMPTY SLATE</h3>
-            <p className="text-muted-foreground text-sm font-mono mb-6 max-w-xs">
-              No tasks yet. Create your first task or open the terminal with <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘T</kbd>
+            <h3 className="text-3xl font-semibold mb-2">Empty Slate</h3>
+            <p className="text-muted-foreground text-sm mb-6 max-w-xs">
+              No tasks yet. Create your first task or open the terminal.
             </p>
             <div className="flex gap-3">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowNewTask(true)}
-                className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-mono"
+                className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium"
               >
-                + NEW TASK
+                + New Task
               </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setShowTerminal(true)}
-                className="px-4 py-2 bg-muted rounded-lg text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+                className="px-4 py-2 bg-muted rounded-lg text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                &gt;_ TERMINAL
+                &gt;_ Terminal
               </motion.button>
             </div>
           </motion.div>
@@ -270,7 +278,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
       {/* Task detail sheet */}
       <AnimatePresence>
         {selectedTask && (
-          <TaskDetailSheet task={selectedTask} onClose={() => setSelectedTaskId(null)} />
+          <TaskDetailSheet task={selectedTask} statuses={statuses} onClose={() => setSelectedTaskId(null)} />
         )}
       </AnimatePresence>
 
@@ -280,6 +288,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
           <TodoTerminal
             project={project}
             tasks={tasks}
+            statuses={statuses}
             onClose={() => setShowTerminal(false)}
             onSelectTask={setSelectedTaskId}
           />

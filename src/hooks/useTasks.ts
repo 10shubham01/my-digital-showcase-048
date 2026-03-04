@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type TaskStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
+export type TaskStatus = string;
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 
 export interface Task {
@@ -10,7 +10,7 @@ export interface Task {
   user_id: string;
   title: string;
   description: string | null;
-  status: TaskStatus;
+  status: string;
   priority: TaskPriority;
   due_date: string | null;
   order: number;
@@ -56,7 +56,7 @@ export const useTasks = (projectId: string | null) => {
 export const useCreateTask = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (task: { title: string; project_id: string; description?: string; priority?: TaskPriority; status?: TaskStatus; due_date?: string }) => {
+    mutationFn: async (task: { title: string; project_id: string; description?: string; priority?: TaskPriority; status?: string; due_date?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
       const { data, error } = await supabase

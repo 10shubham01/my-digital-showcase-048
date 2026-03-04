@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      project_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          order: number
+          project_id: string
+          slug: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          order?: number
+          project_id: string
+          slug: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order?: number
+          project_id?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_statuses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           color: string
@@ -129,7 +167,7 @@ export type Database = {
           order: number
           priority: Database["public"]["Enums"]["task_priority"]
           project_id: string
-          status: Database["public"]["Enums"]["task_status"]
+          status: string
           title: string
           updated_at: string
           user_id: string
@@ -142,7 +180,7 @@ export type Database = {
           order?: number
           priority?: Database["public"]["Enums"]["task_priority"]
           project_id: string
-          status?: Database["public"]["Enums"]["task_status"]
+          status?: string
           title: string
           updated_at?: string
           user_id: string
@@ -155,7 +193,7 @@ export type Database = {
           order?: number
           priority?: Database["public"]["Enums"]["task_priority"]
           project_id?: string
-          status?: Database["public"]["Enums"]["task_status"]
+          status?: string
           title?: string
           updated_at?: string
           user_id?: string

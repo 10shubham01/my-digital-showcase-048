@@ -18,6 +18,8 @@ const TerminalLogin = ({ onLogin, onSignUp }: TerminalLoginProps) => {
   const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIdx, setHistoryIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +38,12 @@ const TerminalLogin = ({ onLogin, onSignUp }: TerminalLoginProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step === "processing" || !input.trim()) return;
+
+    // Save to history (only email step, not passwords)
+    if (step === "email") {
+      setHistory((prev) => [input, ...prev].slice(0, 50));
+    }
+    setHistoryIdx(-1);
 
     if (step === "email") {
       addLine(`$ email: ${input}`, "input");
@@ -64,6 +72,26 @@ const TerminalLogin = ({ onLogin, onSignUp }: TerminalLoginProps) => {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (step !== "email") return;
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = Math.min(historyIdx + 1, history.length - 1);
+      setHistoryIdx(next);
+      if (history[next]) setInput(history[next]);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const next = historyIdx - 1;
+      if (next < 0) {
+        setHistoryIdx(-1);
+        setInput("");
+      } else {
+        setHistoryIdx(next);
+        setInput(history[next]);
+      }
+    }
+  };
+
   const prompt = step === "email" ? "▸ Enter email:" : step === "password" ? "" : "▸ Processing...";
 
   return (
@@ -79,8 +107,8 @@ const TerminalLogin = ({ onLogin, onSignUp }: TerminalLoginProps) => {
           <div className="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border">
             <div className="flex gap-1.5">
               <div className="w-3 h-3 rounded-full bg-destructive/70" />
-              <div className="w-3 h-3 rounded-full bg-accent-orange/70" style={{ backgroundColor: "hsl(var(--accent-orange) / 0.7)" }} />
-              <div className="w-3 h-3 rounded-full bg-accent-green/70" style={{ backgroundColor: "hsl(var(--accent-green) / 0.7)" }} />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--accent-orange) / 0.7)" }} />
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--accent-green) / 0.7)" }} />
             </div>
             <div className="flex-1 text-center">
               <span className="text-xs font-mono text-muted-foreground flex items-center justify-center gap-1.5">
@@ -104,10 +132,6 @@ const TerminalLogin = ({ onLogin, onSignUp }: TerminalLoginProps) => {
                   className={
                     line.type === "error"
                       ? "text-destructive"
-                      : line.type === "success"
-                      ? "text-accent-green"
-                      : line.type === "input"
-                      ? "text-accent-cyan"
                       : "text-muted-foreground"
                   }
                   style={
@@ -125,16 +149,15 @@ const TerminalLogin = ({ onLogin, onSignUp }: TerminalLoginProps) => {
 
             {step !== "processing" && (
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
-                <span className="text-accent-pop" style={{ color: "hsl(var(--accent-pop))" }}>
-                  $
-                </span>
+                <span style={{ color: "hsl(var(--accent-pop))" }}>$</span>
                 <div className="relative flex-1">
                   <input
                     ref={inputRef}
                     type={step === "password" && !showPassword ? "password" : "text"}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    className="w-full bg-transparent outline-none text-foreground font-mono caret-accent-pop"
+                    onKeyDown={handleKeyDown}
+                    className="w-full bg-transparent outline-none text-foreground font-mono"
                     style={{ caretColor: "hsl(var(--accent-pop))" }}
                     autoFocus
                     placeholder={step === "email" ? "you@email.com" : "••••••••"}
@@ -157,7 +180,7 @@ const TerminalLogin = ({ onLogin, onSignUp }: TerminalLoginProps) => {
           <div className="px-4 py-3 border-t border-border bg-muted/30 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Terminal className="w-3.5 h-3.5" />
-              <span>Secure shell</span>
+              <span>Secure shell · ↑↓ history</span>
             </div>
             <button
               onClick={() => {
