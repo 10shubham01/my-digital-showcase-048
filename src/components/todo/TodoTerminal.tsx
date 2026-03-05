@@ -4,8 +4,11 @@ import { X } from "lucide-react";
 import type { Project } from "@/hooks/useProjects";
 import type { Task, TaskPriority } from "@/hooks/useTasks";
 import type { ProjectStatus } from "@/hooks/useProjectStatuses";
-import { useCreateTask, useUpdateTask, useDeleteTask } from "@/hooks/useTasks";
+import { useCreateTask, useUpdateTask, useDeleteTask, useTasks } from "@/hooks/useTasks";
+import { useProjects } from "@/hooks/useProjects";
+import { useProjectStatuses } from "@/hooks/useProjectStatuses";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TodoTerminalProps {
   project: Project;
@@ -13,25 +16,37 @@ interface TodoTerminalProps {
   statuses: ProjectStatus[];
   onClose: () => void;
   onSelectTask: (id: string) => void;
+  onSwitchProject?: (id: string) => void;
 }
 
 type Line = { text: string; type: "system" | "input" | "error" | "success" | "table" | "info" };
 
 const PRIORITY_MAP: Record<string, TaskPriority> = {
-  low: "low", l: "low",
-  medium: "medium", m: "medium", med: "medium",
-  high: "high", h: "high",
-  urgent: "urgent", u: "urgent",
+  low: "low", l: "low", p4: "low", "4": "low",
+  medium: "medium", m: "medium", med: "medium", p3: "medium", "3": "medium",
+  high: "high", h: "high", p2: "high", "2": "high",
+  urgent: "urgent", u: "urgent", p1: "urgent", "1": "urgent",
 };
 
-const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoTerminalProps) => {
-  // Build status map from dynamic statuses
+const PRI_LABEL: Record<string, string> = {
+  low: "P4", medium: "P3", high: "P2", urgent: "P1",
+};
+
+const TodoTerminal = ({ project: initialProject, tasks: initialTasks, statuses: initialStatuses, onClose, onSelectTask, onSwitchProject }: TodoTerminalProps) => {
+  const { data: allProjects = [] } = useProjects();
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(initialProject.id);
+  const currentProject = allProjects.find((p) => p.id === currentProjectId) || initialProject;
+  const { data: currentTasks = [] } = useTasks(currentProjectId);
+  const { data: currentStatuses = [] } = useProjectStatuses(currentProjectId);
+
+  const tasks = currentProjectId === initialProject.id ? (currentTasks.length > 0 ? currentTasks : initialTasks) : currentTasks;
+  const statuses = currentProjectId === initialProject.id ? (currentStatuses.length > 0 ? currentStatuses : initialStatuses) : currentStatuses;
+
   const statusMap = useCallback(() => {
     const map: Record<string, string> = {};
     statuses.forEach((s) => {
       map[s.slug] = s.slug;
       map[s.name.toLowerCase()] = s.slug;
-      // Add short aliases
       if (s.slug === "in_progress") { map.ip = s.slug; map.wip = s.slug; map.progress = s.slug; }
       if (s.slug === "backlog") map.b = s.slug;
       if (s.slug === "todo") map.t = s.slug;
@@ -43,8 +58,8 @@ const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoT
 
   const [lines, setLines] = useState<Line[]>([
     { text: `┌────────────────────────────────────────────┐`, type: "info" },
-    { text: `│  KANBAN TERMINAL — ${project.name.toUpperCase().slice(0, 22).padEnd(22)}│`, type: "info" },
-    { text: `│  Type 'help' for available commands         │`, type: "info" },
+    { text: `│  KANBAN TERMINAL v2.0                      │`, type: "info" },
+    { text: `│  Type 'help' for commands · 'cd' to nav    │`, type: "info" },
     { text: `└────────────────────────────────────────────┘`, type: "info" },
     { text: "", type: "system" },
   ]);
@@ -71,13 +86,15 @@ const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoT
     setLines((prev) => [...prev, ...newLines]);
   }, []);
 
+  const prompt = currentProjectId ? `${currentProject.name}` : "~";
+
   const handleCommand = async (cmd: string) => {
     const trimmed = cmd.trim();
     if (!trimmed) return;
 
     setHistory((prev) => [trimmed, ...prev].slice(0, 50));
     setHistoryIdx(-1);
-    addLines({ text: `$ ${trimmed}`, type: "input" });
+    addLines({ text: `${prompt} $ ${trimmed}`, type: "input" });
 
     const parts = trimmed.split(/\s+/);
     const command = parts[0].toLowerCase();
@@ -88,113 +105,189 @@ const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoT
       case "help": case "h": case "?":
         addLines(
           { text: "", type: "system" },
-          { text: "  COMMANDS:", type: "info" },
-          { text: "  ls [status]         — List tasks (all or by status)", type: "system" },
+          { text: "  NAVIGATION:", type: "info" },
+          { text: "  cd <project>        — Switch to project (name or #)", type: "system" },
+          { text: "  cd ..               — Go to root (project list)", type: "system" },
+          { text: "  ls                  — List projects (root) or tasks (in project)", type: "system" },
+          { text: "", type: "system" },
+          { text: "  TASK OPERATIONS:", type: "info" },
           { text: "  add <title>         — Create a new task", type: "system" },
-          { text: "  mv <#> <status>     — Move task to status", type: "system" },
-          { text: "  pri <#> <priority>  — Set priority (low/med/high/urgent)", type: "system" },
+          { text: "  mv <#|*> <status>   — Move task(s) to status (* = all)", type: "system" },
+          { text: "  pri <#|*> <P1-P4>   — Set priority (P1=urgent..P4=low)", type: "system" },
           { text: "  rm <#>              — Delete a task", type: "system" },
           { text: "  open <#>            — Open task detail", type: "system" },
           { text: "  stats               — Show project statistics", type: "system" },
-          { text: "  statuses            — List available status buckets", type: "system" },
-          { text: "  clear               — Clear terminal", type: "system" },
-          { text: "  exit / q            — Close terminal", type: "system" },
+          { text: "  statuses            — List available buckets", type: "system" },
+          { text: "", type: "system" },
+          { text: "  ACCOUNT:", type: "info" },
+          { text: "  passwd              — Change password", type: "system" },
+          { text: "  clear / exit        — Clear or close terminal", type: "system" },
           { text: "", type: "system" },
         );
         break;
 
-      case "ls": case "list": {
-        const statusFilter = args[0] ? sMap[args[0].toLowerCase()] : undefined;
-        const filtered = statusFilter ? tasks.filter((t) => t.status === statusFilter) : tasks;
-        if (filtered.length === 0) {
-          addLines({ text: "  (no tasks found)", type: "system" });
+      case "cd": {
+        if (!args[0] || args[0] === ".." || args[0] === "/") {
+          setCurrentProjectId(null);
+          addLines({ text: "  ▸ At root. Type 'ls' to see projects.", type: "success" });
         } else {
-          addLines({ text: "", type: "system" });
-          addLines({ text: `  #   STATUS        PRI     TITLE`, type: "info" });
-          addLines({ text: `  ─── ───────────── ─────── ─────────────────────────────`, type: "system" });
-          filtered.forEach((t) => {
-            const idx = tasks.indexOf(t);
-            const statusLabel = t.status.toUpperCase().replace("_", " ").padEnd(13);
-            const priLabel = t.priority.toUpperCase().padEnd(7);
-            const title = t.title.length > 30 ? t.title.slice(0, 30) + "…" : t.title;
-            const isDone = t.status === "done";
-            addLines({
-              text: `  ${String(idx + 1).padStart(3)} ${statusLabel} ${priLabel} ${title}`,
-              type: isDone ? "success" : "system",
+          const query = args.join(" ").toLowerCase();
+          const idx = parseInt(query) - 1;
+          const found = !isNaN(idx)
+            ? allProjects[idx]
+            : allProjects.find((p) => p.name.toLowerCase().includes(query));
+          if (found) {
+            setCurrentProjectId(found.id);
+            onSwitchProject?.(found.id);
+            addLines({ text: `  ▸ Switched to "${found.name}"`, type: "success" });
+          } else {
+            addLines({ text: `  ✗ Project not found: "${query}"`, type: "error" });
+          }
+        }
+        break;
+      }
+
+      case "ls": case "list": {
+        if (!currentProjectId) {
+          // Root level - list projects
+          if (allProjects.length === 0) {
+            addLines({ text: "  (no projects)", type: "system" });
+          } else {
+            addLines({ text: "", type: "system" }, { text: `  #   PROJECT`, type: "info" });
+            addLines({ text: `  ─── ──────────────────────────────`, type: "system" });
+            allProjects.forEach((p, i) => {
+              addLines({ text: `  ${String(i + 1).padStart(3)} 📁 ${p.name}`, type: "system" });
             });
-          });
-          addLines({ text: "", type: "system" });
+            addLines({ text: "", type: "system" }, { text: "  Use 'cd <#>' to enter a project", type: "info" });
+          }
+        } else {
+          const statusFilter = args[0] ? sMap[args[0].toLowerCase()] : undefined;
+          const filtered = statusFilter ? tasks.filter((t) => t.status === statusFilter) : tasks;
+          if (filtered.length === 0) {
+            addLines({ text: "  (no tasks found)", type: "system" });
+          } else {
+            addLines({ text: "", type: "system" });
+            addLines({ text: `  #   STATUS        PRI  TITLE`, type: "info" });
+            addLines({ text: `  ─── ───────────── ──── ─────────────────────────────`, type: "system" });
+            filtered.forEach((t) => {
+              const idx = tasks.indexOf(t);
+              const statusLabel = t.status.toUpperCase().replace("_", " ").padEnd(13);
+              const priLabel = (PRI_LABEL[t.priority] || "P3").padEnd(4);
+              const title = t.title.length > 30 ? t.title.slice(0, 30) + "…" : t.title;
+              const isDone = t.status === "done";
+              addLines({
+                text: `  ${String(idx + 1).padStart(3)} ${statusLabel} ${priLabel} ${title}`,
+                type: isDone ? "success" : "system",
+              });
+            });
+            addLines({ text: "", type: "system" });
+          }
         }
         break;
       }
 
       case "add": case "new": case "create": {
+        if (!currentProjectId) { addLines({ text: "  ✗ cd into a project first", type: "error" }); break; }
         const title = args.join(" ");
         if (!title) { addLines({ text: "  ✗ Usage: add <task title>", type: "error" }); break; }
         try {
           const defaultStatus = statuses[1]?.slug || statuses[0]?.slug || "todo";
-          await createTask.mutateAsync({ title, project_id: project.id, status: defaultStatus });
+          await createTask.mutateAsync({ title, project_id: currentProjectId, status: defaultStatus });
           addLines({ text: `  ✓ Created: "${title}"`, type: "success" });
-          qc.invalidateQueries({ queryKey: ["tasks", project.id] });
+          qc.invalidateQueries({ queryKey: ["tasks", currentProjectId] });
         } catch (e: any) { addLines({ text: `  ✗ ${e.message}`, type: "error" }); }
         break;
       }
 
       case "mv": case "move": {
-        const idx = parseInt(args[0]) - 1;
+        if (!currentProjectId) { addLines({ text: "  ✗ cd into a project first", type: "error" }); break; }
+        const target = args[0];
         const status = args[1] ? sMap[args[1].toLowerCase()] : undefined;
-        if (isNaN(idx) || idx < 0 || idx >= tasks.length || !status) {
-          addLines({ text: "  ✗ Usage: mv <#> <status>  (type 'statuses' to see available)", type: "error" });
-          break;
+        if (!target || !status) {
+          addLines({ text: "  ✗ Usage: mv <#|*> <status>", type: "error" }); break;
         }
         try {
-          await updateTask.mutateAsync({ id: tasks[idx].id, status });
-          addLines({ text: `  ✓ "${tasks[idx].title}" → ${status.toUpperCase()}`, type: "success" });
-          qc.invalidateQueries({ queryKey: ["tasks", project.id] });
+          if (target === "*" || target === "all") {
+            let count = 0;
+            for (const t of tasks) {
+              if (t.status !== status) {
+                await updateTask.mutateAsync({ id: t.id, status });
+                count++;
+              }
+            }
+            addLines({ text: `  ✓ Moved ${count} tasks → ${status.toUpperCase()}`, type: "success" });
+          } else {
+            const idx = parseInt(target) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= tasks.length) {
+              addLines({ text: "  ✗ Invalid task number", type: "error" }); break;
+            }
+            await updateTask.mutateAsync({ id: tasks[idx].id, status });
+            addLines({ text: `  ✓ "${tasks[idx].title}" → ${status.toUpperCase()}`, type: "success" });
+          }
+          qc.invalidateQueries({ queryKey: ["tasks", currentProjectId] });
         } catch (e: any) { addLines({ text: `  ✗ ${e.message}`, type: "error" }); }
         break;
       }
 
       case "pri": case "priority": {
-        const idx = parseInt(args[0]) - 1;
+        if (!currentProjectId) { addLines({ text: "  ✗ cd into a project first", type: "error" }); break; }
+        const target = args[0];
         const priority = args[1] ? PRIORITY_MAP[args[1].toLowerCase()] : undefined;
-        if (isNaN(idx) || idx < 0 || idx >= tasks.length || !priority) {
-          addLines({ text: "  ✗ Usage: pri <#> <priority>  (low/med/high/urgent)", type: "error" });
-          break;
+        if (!target || !priority) {
+          addLines({ text: "  ✗ Usage: pri <#|*> <P1-P4>", type: "error" }); break;
         }
         try {
-          await updateTask.mutateAsync({ id: tasks[idx].id, priority });
-          addLines({ text: `  ✓ "${tasks[idx].title}" priority → ${priority.toUpperCase()}`, type: "success" });
-          qc.invalidateQueries({ queryKey: ["tasks", project.id] });
+          if (target === "*" || target === "all") {
+            let count = 0;
+            for (const t of tasks) {
+              if (t.priority !== priority) {
+                await updateTask.mutateAsync({ id: t.id, priority });
+                count++;
+              }
+            }
+            addLines({ text: `  ✓ Set ${count} tasks → ${PRI_LABEL[priority]}`, type: "success" });
+          } else {
+            const idx = parseInt(target) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= tasks.length) {
+              addLines({ text: "  ✗ Invalid task number", type: "error" }); break;
+            }
+            await updateTask.mutateAsync({ id: tasks[idx].id, priority });
+            addLines({ text: `  ✓ "${tasks[idx].title}" → ${PRI_LABEL[priority]}`, type: "success" });
+          }
+          qc.invalidateQueries({ queryKey: ["tasks", currentProjectId] });
         } catch (e: any) { addLines({ text: `  ✗ ${e.message}`, type: "error" }); }
         break;
       }
 
       case "rm": case "delete": case "del": {
+        if (!currentProjectId) { addLines({ text: "  ✗ cd into a project first", type: "error" }); break; }
         const idx = parseInt(args[0]) - 1;
         if (isNaN(idx) || idx < 0 || idx >= tasks.length) {
           addLines({ text: "  ✗ Usage: rm <#>", type: "error" }); break;
         }
         try {
-          await deleteTask.mutateAsync({ id: tasks[idx].id, projectId: project.id });
+          await deleteTask.mutateAsync({ id: tasks[idx].id, projectId: currentProjectId });
           addLines({ text: `  ✓ Deleted: "${tasks[idx].title}"`, type: "success" });
-          qc.invalidateQueries({ queryKey: ["tasks", project.id] });
+          qc.invalidateQueries({ queryKey: ["tasks", currentProjectId] });
         } catch (e: any) { addLines({ text: `  ✗ ${e.message}`, type: "error" }); }
         break;
       }
 
       case "open": case "view": {
+        if (!currentProjectId) { addLines({ text: "  ✗ cd into a project first", type: "error" }); break; }
         const idx = parseInt(args[0]) - 1;
         if (isNaN(idx) || idx < 0 || idx >= tasks.length) {
           addLines({ text: "  ✗ Usage: open <#>", type: "error" }); break;
         }
         addLines({ text: `  ▸ Opening "${tasks[idx].title}"...`, type: "system" });
+        if (currentProjectId !== initialProject.id) onSwitchProject?.(currentProjectId);
         onClose();
         setTimeout(() => onSelectTask(tasks[idx].id), 300);
         break;
       }
 
       case "statuses": {
+        if (!currentProjectId) { addLines({ text: "  ✗ cd into a project first", type: "error" }); break; }
         addLines({ text: "", type: "system" }, { text: "  AVAILABLE STATUSES:", type: "info" });
         statuses.forEach((s) => {
           addLines({ text: `    ● ${s.name.padEnd(16)} (slug: ${s.slug})`, type: "system" });
@@ -204,20 +297,16 @@ const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoT
       }
 
       case "stats": {
+        if (!currentProjectId) { addLines({ text: "  ✗ cd into a project first", type: "error" }); break; }
         const byStatus: Record<string, number> = {};
-        const byPriority: Record<string, number> = {};
-        tasks.forEach((t) => {
-          byStatus[t.status] = (byStatus[t.status] || 0) + 1;
-          byPriority[t.priority] = (byPriority[t.priority] || 0) + 1;
-        });
+        tasks.forEach((t) => { byStatus[t.status] = (byStatus[t.status] || 0) + 1; });
         const doneCount = byStatus.done || 0;
         const pct = tasks.length > 0 ? Math.round((doneCount / tasks.length) * 100) : 0;
         const bar = "█".repeat(Math.round(pct / 5)) + "░".repeat(20 - Math.round(pct / 5));
         addLines(
           { text: "", type: "system" },
-          { text: `  PROJECT: ${project.name}`, type: "info" },
+          { text: `  PROJECT: ${currentProject.name}`, type: "info" },
           { text: `  TOTAL: ${tasks.length} tasks`, type: "system" },
-          { text: "", type: "system" },
           { text: `  PROGRESS [${bar}] ${pct}%`, type: pct === 100 ? "success" : "info" },
           { text: "", type: "system" },
           { text: `  BY STATUS:`, type: "info" },
@@ -230,9 +319,23 @@ const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoT
         break;
       }
 
+      case "passwd": case "password": {
+        addLines({ text: "  ▸ Sending password reset email...", type: "system" });
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user?.email) throw new Error("No email found");
+          const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+            redirectTo: `${window.location.origin}/todo`,
+          });
+          if (error) throw error;
+          addLines({ text: `  ✓ Reset link sent to ${user.email}`, type: "success" });
+        } catch (e: any) { addLines({ text: `  ✗ ${e.message}`, type: "error" }); }
+        break;
+      }
+
       case "clear": case "cls": setLines([]); break;
       case "exit": case "q": case "quit": onClose(); break;
-      default: addLines({ text: `  ✗ Unknown command: '${command}'. Type 'help' for usage.`, type: "error" });
+      default: addLines({ text: `  ✗ Unknown command: '${command}'. Type 'help'.`, type: "error" });
     }
   };
 
@@ -272,7 +375,7 @@ const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoT
         </div>
         <div className="flex-1 text-center">
           <span className="text-xs font-mono text-muted-foreground">
-            kanban-terminal — {project.name} — {tasks.length} tasks
+            kanban-terminal — {currentProjectId ? currentProject.name : "root"} — {tasks.length} tasks
           </span>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
@@ -300,6 +403,7 @@ const TodoTerminal = ({ project, tasks, statuses, onClose, onSelectTask }: TodoT
         ))}
 
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs">{prompt}</span>
           <span style={{ color: "hsl(var(--accent-green))" }}>$</span>
           <input
             ref={inputRef}

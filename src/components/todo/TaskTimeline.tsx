@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { CheckSquare, Paperclip, Calendar, ChevronRight } from "lucide-react";
 import type { Task } from "@/hooks/useTasks";
 import type { ProjectStatus } from "@/hooks/useProjectStatuses";
+import LinkText from "./LinkText";
 
 interface TaskTimelineProps {
   tasks: Task[];
@@ -11,8 +12,8 @@ interface TaskTimelineProps {
   onSelectTask: (id: string) => void;
 }
 
-const PRIORITY_ICON: Record<string, string> = {
-  low: "↓", medium: "→", high: "↑", urgent: "⚡",
+const PRI_LABEL: Record<string, string> = {
+  low: "P4", medium: "P3", high: "P2", urgent: "P1",
 };
 
 const TaskTimeline = ({ tasks, statuses, checklistCounts, attachmentCounts, onSelectTask }: TaskTimelineProps) => {
@@ -22,7 +23,6 @@ const TaskTimeline = ({ tasks, statuses, checklistCounts, attachmentCounts, onSe
     return acc;
   }, {});
 
-  const statusMap = new Map(statuses.map((s) => [s.slug, s]));
   const activeStatuses = statuses.filter((s) => grouped[s.slug]?.length > 0);
 
   return (
@@ -84,18 +84,20 @@ const TaskTimeline = ({ tasks, statuses, checklistCounts, attachmentCounts, onSe
                         style={{ borderColor: status.color }}
                       />
 
-                      <span className="text-sm w-5 text-center font-mono opacity-50 group-hover:opacity-100 transition-opacity">
-                        {PRIORITY_ICON[task.priority] || "→"}
+                      <span className="text-xs w-5 text-center font-mono font-bold opacity-60 group-hover:opacity-100 transition-opacity">
+                        {PRI_LABEL[task.priority] || "P3"}
                       </span>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className={`text-sm font-medium truncate ${status.slug === "done" ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                            {task.title}
+                            <LinkText text={task.title} />
                           </span>
                         </div>
                         {task.description && (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5 max-w-md">{task.description}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5 max-w-md">
+                            <LinkText text={task.description} />
+                          </p>
                         )}
                       </div>
 

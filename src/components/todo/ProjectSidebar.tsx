@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Plus, Trash2, LogOut, FolderKanban, ChevronLeft, ChevronRight, Settings } from "lucide-react";
-import { useProjects, useCreateProject, useDeleteProject, type Project } from "@/hooks/useProjects";
+import { useProjects, useCreateProject, useDeleteProject } from "@/hooks/useProjects";
 import FolderIcon from "./FolderIcon";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ProjectSidebarProps {
   selectedProject: string | null;
@@ -17,16 +18,17 @@ const PROJECT_COLORS = [
 ];
 
 const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut, onOpenSettings }: ProjectSidebarProps) => {
-  const { data: projects = [], isLoading } = useProjects();
+  const { data: projects = [] } = useProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [color, setColor] = useState(PROJECT_COLORS[0]);
   const [collapsed, setCollapsed] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || createProject.isPending) return;
     await createProject.mutateAsync({ name: name.trim(), color, icon: "📁" });
     setName("");
     setShowCreate(false);
@@ -68,32 +70,48 @@ const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut, onOpenSet
             {!collapsed && (
               <>
                 <span className="flex-1 truncate text-sm font-medium">{p.name}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm("Delete this project?")) deleteProject.mutate(p.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
+                <Popover open={deleteConfirm === p.id} onOpenChange={(open) => setDeleteConfirm(open ? p.id : null)}>
+                  <PopoverTrigger asChild>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteConfirm(p.id); }}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-52 p-3" onClick={(e) => e.stopPropagation()}>
+                    <p className="text-sm font-medium mb-3">Delete "{p.name}"?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteProject.mutate(p.id); setDeleteConfirm(null); }}
+                        className="flex-1 bg-destructive text-destructive-foreground text-xs py-2 rounded-lg font-medium"
+                      >
+                        Delete
+                      </button>
+                      <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-muted text-xs py-2 rounded-lg">
+                        Cancel
+                      </button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </>
             )}
           </motion.button>
         ))}
       </div>
 
-      {/* Create project */}
+      {/* Create project - popover */}
       {!collapsed && (
-        <div className="p-3 border-t border-border space-y-2">
-          <AnimatePresence>
-            {showCreate && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden space-y-2"
-              >
+        <div className="p-3 border-t border-border">
+          <Popover open={showCreate} onOpenChange={setShowCreate}>
+            <PopoverTrigger asChild>
+              <button className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
+                <Plus className="w-4 h-4" /> New Project
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-64 p-3">
+              <p className="text-xs font-mono text-muted-foreground mb-2">NEW PROJECT</p>
+              <div className="space-y-2">
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -113,22 +131,20 @@ const ProjectSidebar = ({ selectedProject, onSelectProject, onSignOut, onOpenSet
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleCreate} className="flex-1 bg-foreground text-background rounded-lg py-1.5 text-xs font-medium hover:opacity-90 transition-opacity">
-                    Create
+                  <button
+                    onClick={handleCreate}
+                    disabled={createProject.isPending || !name.trim()}
+                    className="flex-1 bg-foreground text-background rounded-lg py-1.5 text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {createProject.isPending ? "Creating..." : "Create"}
                   </button>
-                  <button onClick={() => setShowCreate(false)} className="px-3 text-xs text-muted-foreground hover:text-foreground">
+                  <button onClick={() => setShowCreate(false)} className="px-3 text-xs text-muted-foreground">
                     Cancel
                   </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <button
-            onClick={() => setShowCreate(!showCreate)}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> New Project
-          </button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       )}
 

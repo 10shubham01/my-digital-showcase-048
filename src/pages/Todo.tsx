@@ -63,7 +63,7 @@ const Todo = () => {
         onOpenSettings={() => setShowSettings(true)}
       />
       {selectedProject ? (
-        <TaskBoard project={selectedProject} />
+        <TaskBoard project={selectedProject} onSwitchProject={setSelectedProjectId} />
       ) : (
         <div className="flex-1 flex items-center justify-center text-center">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
