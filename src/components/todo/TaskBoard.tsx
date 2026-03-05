@@ -1,21 +1,24 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Terminal as TerminalIcon } from "lucide-react";
+import { Plus, Search, Terminal as TerminalIcon, Clock } from "lucide-react";
 import { useTasks, useCreateTask } from "@/hooks/useTasks";
-import { useProjectStatuses, type ProjectStatus } from "@/hooks/useProjectStatuses";
+import { useProjectStatuses } from "@/hooks/useProjectStatuses";
 import type { Project } from "@/hooks/useProjects";
 import TaskTimeline from "./TaskTimeline";
+import TaskActivityTimeline from "./TaskActivityTimeline";
 import TaskDetailSheet from "./TaskDetailSheet";
 import TodoTerminal from "./TodoTerminal";
 import FolderIcon from "./FolderIcon";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
 interface TaskBoardProps {
   project: Project;
+  onSwitchProject?: (id: string) => void;
 }
 
-const TaskBoard = ({ project }: TaskBoardProps) => {
+const TaskBoard = ({ project, onSwitchProject }: TaskBoardProps) => {
   const { data: tasks = [], isLoading } = useTasks(project.id);
   const { data: statuses = [] } = useProjectStatuses(project.id);
   const createTask = useCreateTask();
@@ -23,8 +26,25 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showTerminal, setShowTerminal] = useState(false);
-  const [showNewTask, setShowNewTask] = useState(false);
+  const [showAddPopover, setShowAddPopover] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [viewMode, setViewMode] = useState<"tasks" | "activity">("tasks");
+
+  // Keyboard shortcut: Cmd+N to add, Cmd+T for terminal
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        setShowAddPopover(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "t") {
+        e.preventDefault();
+        setShowTerminal(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const { data: allChecklists = [] } = useQuery({
     queryKey: ["all-checklists", project.id],
@@ -82,9 +102,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: tasks.length };
-    tasks.forEach((t) => {
-      counts[t.status] = (counts[t.status] || 0) + 1;
-    });
+    tasks.forEach((t) => { counts[t.status] = (counts[t.status] || 0) + 1; });
     return counts;
   }, [tasks]);
 
@@ -94,7 +112,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
   }, [statuses, statusCounts]);
 
   const handleCreateTask = async () => {
-    if (!newTaskTitle.trim()) return;
+    if (!newTaskTitle.trim() || createTask.isPending) return;
     const defaultStatus = filterStatus !== "all" ? filterStatus : (statuses[1]?.slug || statuses[0]?.slug || "todo");
     await createTask.mutateAsync({
       title: newTaskTitle.trim(),
@@ -102,7 +120,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
       status: defaultStatus,
     });
     setNewTaskTitle("");
-    setShowNewTask(false);
+    setShowAddPopover(false);
   };
 
   const selectedTask = tasks.find((t) => t.id === selectedTaskId);
@@ -130,101 +148,109 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
             />
           </div>
 
+          {/* View toggle */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setViewMode(viewMode === "tasks" ? "activity" : "tasks")}
+            className={`p-2 rounded-lg transition-colors ${viewMode === "activity" ? "bg-foreground text-background" : "bg-muted hover:bg-foreground hover:text-background"}`}
+            title="Toggle activity timeline"
+          >
+            <Clock className="w-4 h-4" />
+          </motion.button>
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowTerminal(true)}
             className="p-2 rounded-lg bg-muted hover:bg-foreground hover:text-background transition-colors"
-            title="Open Terminal"
+            title="Open Terminal (⌘T)"
           >
             <TerminalIcon className="w-4 h-4" />
           </motion.button>
 
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowNewTask(true)}
-            className="p-2 rounded-lg text-background transition-colors"
-            style={{ backgroundColor: "hsl(var(--accent-pop))" }}
-          >
-            <Plus className="w-4 h-4" />
-          </motion.button>
+          <Popover open={showAddPopover} onOpenChange={setShowAddPopover}>
+            <PopoverTrigger asChild>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 rounded-lg text-background transition-colors"
+                style={{ backgroundColor: "hsl(var(--accent-pop))" }}
+                title="Add Task (⌘N)"
+              >
+                <Plus className="w-4 h-4" />
+              </motion.button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-3">
+              <p className="text-xs font-mono text-muted-foreground mb-2">NEW TASK</p>
+              <div className="space-y-2">
+                <input
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleCreateTask();
+                    if (e.key === "Escape") setShowAddPopover(false);
+                  }}
+                  placeholder="What needs to be done?"
+                  className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring font-mono"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateTask}
+                    disabled={createTask.isPending || !newTaskTitle.trim()}
+                    className="flex-1 bg-foreground text-background rounded-lg py-2 text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {createTask.isPending ? "Adding..." : "Add Task"}
+                  </button>
+                  <button onClick={() => setShowAddPopover(false)} className="px-3 text-xs text-muted-foreground">
+                    ESC
+                  </button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
-      {/* Status filter pills - dynamic from project statuses */}
-      <div className="px-6 py-3 flex gap-1.5 overflow-x-auto border-b border-border">
-        <motion.button
-          whileHover={{ y: -1 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setFilterStatus("all")}
-          className={`px-3 py-1 rounded-full text-xs font-mono transition-all whitespace-nowrap ${
-            filterStatus === "all" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          ALL ({tasks.length})
-        </motion.button>
-        {statuses.map((s) => {
-          const isActive = filterStatus === s.slug;
-          return (
-            <motion.button
-              key={s.id}
-              whileHover={{ y: -1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setFilterStatus(isActive ? "all" : s.slug)}
-              className={`px-3 py-1 rounded-full text-xs font-mono transition-all whitespace-nowrap ${
-                isActive ? "text-background" : "bg-muted text-muted-foreground hover:text-foreground"
-              }`}
-              style={isActive ? { backgroundColor: s.color } : {}}
-            >
-              {s.name.toUpperCase()} ({statusCounts[s.slug] || 0})
-            </motion.button>
-          );
-        })}
-      </div>
-
-      {/* Quick add */}
-      <AnimatePresence>
-        {showNewTask && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-b border-border"
+      {/* Status filter pills */}
+      {viewMode === "tasks" && (
+        <div className="px-6 py-3 flex gap-1.5 overflow-x-auto border-b border-border">
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setFilterStatus("all")}
+            className={`px-3 py-1 rounded-full text-xs font-mono transition-all whitespace-nowrap ${
+              filterStatus === "all" ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <div className="px-6 py-3 flex items-center gap-3">
-              <span className="text-muted-foreground font-mono text-sm">$</span>
-              <input
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreateTask();
-                  if (e.key === "Escape") setShowNewTask(false);
-                }}
-                placeholder="What needs to be done?"
-                className="flex-1 bg-transparent outline-none font-mono text-sm"
-                autoFocus
-              />
-              <button
-                onClick={handleCreateTask}
-                className="px-3 py-1 bg-foreground text-background rounded-lg text-xs font-mono"
+            ALL ({tasks.length})
+          </motion.button>
+          {statuses.map((s) => {
+            const isActive = filterStatus === s.slug;
+            return (
+              <motion.button
+                key={s.id}
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setFilterStatus(isActive ? "all" : s.slug)}
+                className={`px-3 py-1 rounded-full text-xs font-mono transition-all whitespace-nowrap ${
+                  isActive ? "text-background" : "bg-muted text-muted-foreground hover:text-foreground"
+                }`}
+                style={isActive ? { backgroundColor: s.color } : {}}
               >
-                ADD
-              </button>
-              <button
-                onClick={() => setShowNewTask(false)}
-                className="text-xs text-muted-foreground font-mono"
-              >
-                ESC
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {s.name.toUpperCase()} ({statusCounts[s.slug] || 0})
+              </motion.button>
+            );
+          })}
+        </div>
+      )}
 
-      {/* Timeline content */}
+      {/* Content */}
       <div className="flex-1 overflow-auto">
-        {filteredTasks.length > 0 ? (
+        {viewMode === "activity" ? (
+          <TaskActivityTimeline projectId={project.id} tasks={tasks} statuses={statuses} />
+        ) : filteredTasks.length > 0 ? (
           <TaskTimeline
             tasks={filteredTasks}
             statuses={statuses}
@@ -238,22 +264,15 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center h-full text-center px-6"
           >
-            <motion.span
-              className="text-6xl mb-4 block"
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              🎯
-            </motion.span>
             <h3 className="text-3xl font-semibold mb-2">Empty Slate</h3>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
-              No tasks yet. Create your first task or open the terminal.
+              No tasks yet. Hit ⌘N or open the terminal.
             </p>
             <div className="flex gap-3">
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setShowNewTask(true)}
+                onClick={() => setShowAddPopover(true)}
                 className="px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium"
               >
                 + New Task
@@ -291,6 +310,7 @@ const TaskBoard = ({ project }: TaskBoardProps) => {
             statuses={statuses}
             onClose={() => setShowTerminal(false)}
             onSelectTask={setSelectedTaskId}
+            onSwitchProject={onSwitchProject}
           />
         )}
       </AnimatePresence>

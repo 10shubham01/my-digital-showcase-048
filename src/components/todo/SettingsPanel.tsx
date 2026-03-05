@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { motion, Reorder } from "framer-motion";
 import { X, Plus, Trash2, GripVertical, Settings } from "lucide-react";
 import { useProjectStatuses, useAddProjectStatus, useUpdateProjectStatus, useDeleteProjectStatus, type ProjectStatus } from "@/hooks/useProjectStatuses";
 import type { Project } from "@/hooks/useProjects";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface SettingsPanelProps {
   project: Project;
@@ -20,12 +21,13 @@ const SettingsPanel = ({ project, onClose }: SettingsPanelProps) => {
   const updateStatus = useUpdateProjectStatus();
   const deleteStatus = useDeleteProjectStatus();
 
+  const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState(PRESET_COLORS[1]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleAdd = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim() || addStatus.isPending) return;
     const slug = newName.trim().toLowerCase().replace(/\s+/g, "_");
     await addStatus.mutateAsync({
       project_id: project.id,
@@ -40,12 +42,11 @@ const SettingsPanel = ({ project, onClose }: SettingsPanelProps) => {
 
   const handleDelete = async (status: ProjectStatus) => {
     if (statuses.length <= 1) return;
-    if (!confirm(`Delete "${status.name}" bucket? Tasks with this status won't be lost but may need reassigning.`)) return;
     await deleteStatus.mutateAsync({ id: status.id, project_id: project.id });
+    setDeleteConfirm(null);
   };
 
   const handleReorder = async (reordered: ProjectStatus[]) => {
-    // Update order for each status
     reordered.forEach((s, i) => {
       if (s.order !== i) {
         updateStatus.mutate({ id: s.id, project_id: project.id, order: i });
@@ -88,12 +89,7 @@ const SettingsPanel = ({ project, onClose }: SettingsPanelProps) => {
               Drag to reorder. Add or remove buckets to match your workflow.
             </p>
 
-            <Reorder.Group
-              axis="y"
-              values={statuses}
-              onReorder={handleReorder}
-              className="space-y-2"
-            >
+            <Reorder.Group axis="y" values={statuses} onReorder={handleReorder} className="space-y-2">
               {statuses.map((status) => (
                 <Reorder.Item
                   key={status.id}
@@ -101,39 +97,53 @@ const SettingsPanel = ({ project, onClose }: SettingsPanelProps) => {
                   className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-3 cursor-grab active:cursor-grabbing group"
                 >
                   <GripVertical className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
-                  <div
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: status.color }}
-                  />
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: status.color }} />
                   <span className="flex-1 text-sm font-medium">{status.name}</span>
                   <span className="text-[10px] text-muted-foreground font-mono">{status.slug}</span>
                   {statuses.length > 1 && (
-                    <button
-                      onClick={() => handleDelete(status)}
-                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <Popover open={deleteConfirm === status.id} onOpenChange={(open) => setDeleteConfirm(open ? status.id : null)}>
+                      <PopoverTrigger asChild>
+                        <button className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-56 p-3">
+                        <p className="text-sm mb-3">Delete "{status.name}"?</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleDelete(status)}
+                            className="flex-1 bg-destructive text-destructive-foreground text-xs py-2 rounded-lg font-medium"
+                          >
+                            Delete
+                          </button>
+                          <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-muted text-xs py-2 rounded-lg">
+                            Cancel
+                          </button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </Reorder.Item>
               ))}
             </Reorder.Group>
           </div>
 
-          <AnimatePresence>
-            {showAdd && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden space-y-3"
-              >
+          {/* Add bucket - popover */}
+          <Popover open={showAdd} onOpenChange={setShowAdd}>
+            <PopoverTrigger asChild>
+              <button className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors">
+                <Plus className="w-4 h-4" /> Add Bucket
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 p-3">
+              <p className="text-xs font-mono text-muted-foreground mb-2">NEW BUCKET</p>
+              <div className="space-y-3">
                 <input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                   placeholder="Status name (e.g. QA Testing)"
-                  className="w-full bg-muted rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+                  className="w-full bg-muted rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
                   autoFocus
                 />
                 <div className="flex gap-1.5 flex-wrap">
@@ -149,29 +159,18 @@ const SettingsPanel = ({ project, onClose }: SettingsPanelProps) => {
                 <div className="flex gap-2">
                   <button
                     onClick={handleAdd}
-                    className="flex-1 bg-foreground text-background rounded-lg py-2 text-sm font-medium hover:opacity-90 transition-opacity"
+                    disabled={addStatus.isPending || !newName.trim()}
+                    className="flex-1 bg-foreground text-background rounded-lg py-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
-                    Add Bucket
+                    {addStatus.isPending ? "Adding..." : "Add Bucket"}
                   </button>
-                  <button
-                    onClick={() => setShowAdd(false)}
-                    className="px-4 text-sm text-muted-foreground hover:text-foreground"
-                  >
+                  <button onClick={() => setShowAdd(false)} className="px-4 text-sm text-muted-foreground">
                     Cancel
                   </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {!showAdd && (
-            <button
-              onClick={() => setShowAdd(true)}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-lg border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-            >
-              <Plus className="w-4 h-4" /> Add Bucket
-            </button>
-          )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </motion.div>
     </>
