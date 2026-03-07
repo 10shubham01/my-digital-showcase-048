@@ -14,6 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_posts: {
+        Row: {
+          created_at: string
+          hashtags: string[] | null
+          id: string
+          posted_at: string | null
+          scheduled_for: string | null
+          slides: Json
+          source_urls: string[] | null
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          hashtags?: string[] | null
+          id?: string
+          posted_at?: string | null
+          scheduled_for?: string | null
+          slides?: Json
+          source_urls?: string[] | null
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          hashtags?: string[] | null
+          id?: string
+          posted_at?: string | null
+          scheduled_for?: string | null
+          slides?: Json
+          source_urls?: string[] | null
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_settings: {
+        Row: {
+          allowed_email: string
+          created_at: string
+          generation_interval_hours: number
+          id: string
+          model: string
+          news_sources: string[] | null
+          system_prompt: string
+          template_style: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_email?: string
+          created_at?: string
+          generation_interval_hours?: number
+          id?: string
+          model?: string
+          news_sources?: string[] | null
+          system_prompt?: string
+          template_style?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_email?: string
+          created_at?: string
+          generation_interval_hours?: number
+          id?: string
+          model?: string
+          news_sources?: string[] | null
+          system_prompt?: string
+          template_style?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_statuses: {
         Row: {
           color: string
