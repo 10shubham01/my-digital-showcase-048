@@ -12,58 +12,46 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+    if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
 
-    const { prompt, current_image_url } = await req.json();
-    if (!prompt) throw new Error("Prompt is required");
+    const { query } = await req.json();
+    if (!query) throw new Error("Query is required");
 
-    const messages: any[] = [];
-
-    if (current_image_url) {
-      // Edit existing image
-      messages.push({
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image_url", image_url: { url: current_image_url } },
-        ],
-      });
-    } else {
-      // Generate new image
-      messages.push({
-        role: "user",
-        content: `Generate an image: ${prompt}. Make it modern, dark-themed, suitable for a tech/AI Instagram carousel slide background. Abstract, professional, visually striking.`,
-      });
-    }
-
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Search for relevant images using Firecrawl
+    const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages,
-        modalities: ["image", "text"],
+        query: `${query} technology AI`,
+        limit: 8,
+        scrapeOptions: { formats: ["links"] },
       }),
     });
 
-    if (!aiResp.ok) {
-      const errText = await aiResp.text();
-      throw new Error(`AI error ${aiResp.status}: ${errText}`);
+    const searchData = await searchResp.json();
+    if (!searchResp.ok) {
+      throw new Error(`Firecrawl error ${searchResp.status}: ${JSON.stringify(searchData)}`);
     }
 
-    const aiData = await aiResp.json();
-    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!imageUrl) {
-      throw new Error("No image generated");
+    // Extract og:image URLs from results
+    const images: { url: string; title: string; source: string }[] = [];
+    for (const result of (searchData.data || [])) {
+      const ogImage = result?.metadata?.ogImage;
+      if (ogImage && !ogImage.includes("data:image")) {
+        images.push({
+          url: ogImage,
+          title: result?.metadata?.title || result?.title || "",
+          source: result?.url || "",
+        });
+      }
     }
 
     return new Response(
-      JSON.stringify({ success: true, image_url: imageUrl }),
+      JSON.stringify({ success: true, images }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
