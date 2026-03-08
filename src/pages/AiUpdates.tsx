@@ -127,11 +127,6 @@ const AiUpdates = () => {
     }
   };
 
-  const handleGenComplete = useCallback(() => {
-    setShowGenProgress(false);
-    setGenSuccess(false);
-    toast.success("New post generated!");
-  }, []);
 
   return (
     <div className="min-h-screen bg-background" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
