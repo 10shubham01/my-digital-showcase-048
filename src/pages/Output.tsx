@@ -11,7 +11,7 @@ import GenerationProgress from "@/components/ai-updates/GenerationProgress";
 import { toast } from "sonner";
 
 const Output = () => {
-  const { session, loading: authLoading, signIn, signOut } = useTodoAuth();
+  const { session, loading: authLoading, signIn, signUp, signOut } = useTodoAuth();
   const { data: settings, isLoading: settingsLoading } = useAiSettings();
   const { data: posts = [], isLoading: postsLoading } = useAiPosts();
   const generatePost = useGeneratePost();
