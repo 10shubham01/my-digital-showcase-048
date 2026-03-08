@@ -265,6 +265,15 @@ const AiUpdates = () => {
       <AnimatePresence>
         {editingPost && <PostEditor post={editingPost} onClose={() => setEditingPost(null)} />}
       </AnimatePresence>
+
+      {/* Generation progress */}
+      <AnimatePresence>
+        <GenerationProgress
+          isGenerating={showGenProgress}
+          isSuccess={genSuccess}
+          onComplete={handleGenComplete}
+        />
+      </AnimatePresence>
     </div>
   );
 };
