@@ -22,25 +22,22 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    // Get user settings
     const { data: settings } = await supabase
       .from("ai_settings")
       .select("*")
       .eq("user_id", user.id)
       .single();
 
-    const systemPrompt = settings?.system_prompt || "You are an AI news curator creating Instagram carousel posts about the latest AI/ML news.";
+    const systemPrompt = settings?.system_prompt || "You are a sharp, witty tech content creator making Instagram carousel posts about the latest AI/ML news. Your tone is conversational, punchy, and fun to read -- like explaining tech to a smart friend over coffee.";
     const model = settings?.model || "google/gemini-2.5-flash";
-    const sources = settings?.news_sources || ["techcrunch.com", "theverge.com", "openai.com/blog"];
 
-    // Step 1: Scrape news from sources using Firecrawl
+    // Step 1: Scrape news
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
 
     const newsItems: string[] = [];
     const sourceUrls: string[] = [];
 
-    // Search for latest AI news
     const searchQueries = [
       "latest AI model release today 2026",
       "new AI agent launched this week",
@@ -81,7 +78,7 @@ serve(async (req) => {
       );
     }
 
-    // Step 2: Generate post content using Lovable AI
+    // Step 2: Generate post with Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -101,45 +98,47 @@ serve(async (req) => {
             role: "user",
             content: `Based on the following AI/tech news scraped today, create an Instagram carousel post.
 
+IMPORTANT RULES:
+- Do NOT use any emojis anywhere in the content. Zero emojis.
+- Write in a punchy, conversational tone. Short sentences. Active voice.
+- Make headlines catchy and curiosity-driven (like "This changes everything" or "Here's what nobody's talking about")
+- Bullet points should be concise insights, not boring summaries. Max 3-4 bullets per slide.
+- Each bullet should be max 15 words.
+- Think of it as "tech Twitter meets a magazine" -- sharp, opinionated, easy to scan.
+- Use strong verbs and concrete numbers where possible.
+
 NEWS CONTENT:
 ${newsContext}
 
 Return a JSON response with this exact structure (no markdown, pure JSON):
 {
-  "title": "Catchy post title",
-  "summary": "Brief 1-2 sentence summary for the caption",
+  "title": "Catchy post title without emojis",
+  "summary": "Engaging 2-3 sentence caption that hooks readers. No emojis. Write like you're texting a tech-savvy friend.",
   "hashtags": ["ai", "machinelearning", "tech", "aiupdate"],
   "slides": [
     {
       "type": "cover",
-      "headline": "🚀 AI Updates",
-      "subheadline": "March 7, 2026",
+      "headline": "AI Updates",
+      "subheadline": "March 8, 2026",
       "accent_color": "#6366f1"
     },
     {
       "type": "news",
-      "headline": "News headline here",
-      "bullets": ["Point 1", "Point 2", "Point 3"],
+      "headline": "Catchy headline here",
+      "bullets": ["Short punchy point 1", "Point 2 with a number", "Why this matters in one line"],
       "source": "Source name",
       "accent_color": "#06b6d4"
     },
     {
-      "type": "news",
-      "headline": "Another headline",
-      "bullets": ["Point 1", "Point 2"],
-      "source": "Source name",
-      "accent_color": "#f97316"
-    },
-    {
       "type": "cta",
-      "headline": "Stay Updated!",
+      "headline": "Stay Updated",
       "subheadline": "Follow for daily AI news",
       "accent_color": "#22c55e"
     }
   ]
 }
 
-Create 4-8 slides. First slide is always cover, last is always CTA. Middle slides are news items.`,
+Create 4-8 slides. First slide is always cover, last is always CTA. Middle slides are news items. Max 4 bullet points per news slide. No emojis anywhere.`,
           },
         ],
         tools: [
@@ -202,7 +201,6 @@ Create 4-8 slides. First slide is always cover, last is always CTA. Middle slide
     if (toolCall?.function?.arguments) {
       postContent = JSON.parse(toolCall.function.arguments);
     } else {
-      // Fallback: try parsing from message content
       const content = aiData.choices?.[0]?.message?.content || "";
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -212,7 +210,34 @@ Create 4-8 slides. First slide is always cover, last is always CTA. Middle slide
       }
     }
 
-    // Step 3: Save the post
+    // Step 3: Try to find relevant images for news slides using Firecrawl search
+    for (const slide of postContent.slides) {
+      if (slide.type === "news" && slide.headline) {
+        try {
+          const imgSearch = await fetch("https://api.firecrawl.dev/v1/search", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: `${slide.headline} AI technology`,
+              limit: 1,
+              scrapeOptions: { formats: ["links"] },
+            }),
+          });
+          const imgData = await imgSearch.json();
+          // Use the page's og:image or screenshot if available
+          if (imgData.data?.[0]?.metadata?.ogImage) {
+            slide.image_url = imgData.data[0].metadata.ogImage;
+          }
+        } catch {
+          // Skip image search errors silently
+        }
+      }
+    }
+
+    // Step 4: Save the post
     const { data: post, error: insertError } = await supabase
       .from("ai_posts")
       .insert({
