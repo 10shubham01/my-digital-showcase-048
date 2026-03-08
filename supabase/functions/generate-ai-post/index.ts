@@ -210,30 +210,36 @@ Create 4-8 slides. First slide is always cover, last is always CTA. Middle slide
       }
     }
 
-    // Step 3: Try to find relevant images for news slides using Firecrawl search
+    // Step 3: Try to find relevant images for ALL slides using Firecrawl search
     for (const slide of postContent.slides) {
-      if (slide.type === "news" && slide.headline) {
-        try {
-          const imgSearch = await fetch("https://api.firecrawl.dev/v1/search", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              query: `${slide.headline} AI technology`,
-              limit: 1,
-              scrapeOptions: { formats: ["links"] },
-            }),
-          });
-          const imgData = await imgSearch.json();
-          // Use the page's og:image or screenshot if available
-          if (imgData.data?.[0]?.metadata?.ogImage) {
-            slide.image_url = imgData.data[0].metadata.ogImage;
+      const searchQuery = slide.type === "cover"
+        ? `AI artificial intelligence technology futuristic 2026`
+        : slide.type === "cta"
+        ? `AI community technology network abstract`
+        : `${slide.headline} AI technology`;
+
+      try {
+        const imgSearch = await fetch("https://api.firecrawl.dev/v1/search", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: searchQuery,
+            limit: 3,
+            scrapeOptions: { formats: ["links"] },
+          }),
+        });
+        const imgData = await imgSearch.json();
+        for (const result of (imgData.data || [])) {
+          if (result?.metadata?.ogImage) {
+            slide.image_url = result.metadata.ogImage;
+            break;
           }
-        } catch {
-          // Skip image search errors silently
         }
+      } catch {
+        // Skip image search errors silently
       }
     }
 
