@@ -8,6 +8,7 @@ export interface AiPostSlide {
   bullets?: string[];
   source?: string;
   accent_color?: string;
+  image_url?: string;
 }
 
 export interface AiPost {
