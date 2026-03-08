@@ -10,7 +10,7 @@ import AiSettingsPanel from "@/components/ai-updates/AiSettingsPanel";
 import GenerationProgress from "@/components/ai-updates/GenerationProgress";
 import { toast } from "sonner";
 
-const AiUpdates = () => {
+const Output = () => {
   const { session, loading: authLoading, signIn, signOut } = useTodoAuth();
   const { data: settings, isLoading: settingsLoading } = useAiSettings();
   const { data: posts = [], isLoading: postsLoading } = useAiPosts();
