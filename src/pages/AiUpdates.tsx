@@ -110,14 +110,22 @@ const AiUpdates = () => {
   const totalCount = posts.length;
 
   const handleGenerate = async () => {
-    toast.loading("Scraping news & generating post...", { id: "gen" });
+    setShowGenProgress(true);
+    setGenSuccess(false);
     try {
       await generatePost.mutateAsync();
-      toast.success("New post generated!", { id: "gen" });
+      setGenSuccess(true);
     } catch (e: any) {
-      toast.error(e.message || "Generation failed", { id: "gen" });
+      setShowGenProgress(false);
+      toast.error(e.message || "Generation failed");
     }
   };
+
+  const handleGenComplete = useCallback(() => {
+    setShowGenProgress(false);
+    setGenSuccess(false);
+    toast.success("New post generated!");
+  }, []);
 
   return (
     <div className="min-h-screen bg-background" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
