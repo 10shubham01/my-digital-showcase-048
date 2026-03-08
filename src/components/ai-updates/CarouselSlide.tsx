@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import type { AiPostSlide } from "@/hooks/useAiPosts";
 
 interface CarouselSlideProps {
@@ -11,12 +10,12 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
   const accent = slide.accent_color || "#6366f1";
 
   const dots = (
-    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-20">
       {Array.from({ length: total }).map((_, i) => (
         <div
           key={i}
           className="w-1.5 h-1.5 rounded-full"
-          style={{ backgroundColor: i === index ? accent : "#ffffff33" }}
+          style={{ backgroundColor: i === index ? accent : "#ffffff55" }}
         />
       ))}
     </div>
@@ -25,30 +24,52 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
   if (slide.type === "cover") {
     return (
       <div
-        className="w-[340px] h-[340px] rounded-2xl relative overflow-hidden flex flex-col items-center justify-center p-8 text-white"
+        className="w-[340px] h-[340px] rounded-2xl relative overflow-hidden flex flex-col items-center justify-end p-8 pb-10 text-white"
         style={{
-          background: `linear-gradient(135deg, ${accent}22 0%, #0a0a0a 50%, ${accent}11 100%)`,
-          border: `1px solid ${accent}33`,
+          background: `linear-gradient(135deg, ${accent}33 0%, #0a0a0a 60%, ${accent}15 100%)`,
+          border: `1px solid ${accent}44`,
         }}
       >
-        <div
-          className="absolute top-0 left-0 w-full h-1"
-          style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }}
-        />
+        {/* Background image with heavy overlay for drama */}
         {slide.image_url && (
-          <div className="absolute inset-0 opacity-15">
+          <div className="absolute inset-0 z-0">
             <img src={slide.image_url} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{
+              background: `linear-gradient(180deg, ${accent}33 0%, #0a0a0aee 55%, #0a0a0a 100%)`,
+            }} />
           </div>
         )}
-        <div className="relative z-10 flex flex-col items-center">
-          <div className="w-10 h-10 rounded-xl mb-4 flex items-center justify-center" style={{ background: `${accent}33` }}>
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: accent }} />
+        {!slide.image_url && (
+          <div className="absolute inset-0 z-0" style={{
+            background: `radial-gradient(ellipse at 30% 20%, ${accent}22 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, ${accent}15 0%, transparent 50%)`,
+          }} />
+        )}
+
+        {/* Accent top bar */}
+        <div
+          className="absolute top-0 left-0 w-full h-1 z-10"
+          style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }}
+        />
+
+        {/* Glowing orb decoration */}
+        <div className="absolute top-6 right-6 z-10">
+          <div className="w-8 h-8 rounded-full" style={{
+            background: `radial-gradient(circle, ${accent}88, ${accent}22, transparent)`,
+            boxShadow: `0 0 30px ${accent}44`,
+          }} />
+        </div>
+
+        {/* Content at bottom */}
+        <div className="relative z-10 flex flex-col items-start w-full">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }} />
+            <span className="text-[10px] uppercase tracking-[0.25em] opacity-70 font-medium">justoutput</span>
           </div>
-          <h1 className="text-2xl font-bold text-center tracking-tight" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
+          <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-left" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
             {slide.headline}
           </h1>
           {slide.subheadline && (
-            <p className="text-sm mt-3 opacity-60 tracking-widest uppercase">{slide.subheadline}</p>
+            <p className="text-xs mt-2 opacity-50 tracking-wider uppercase font-medium">{slide.subheadline}</p>
           )}
         </div>
         {dots}
@@ -65,22 +86,41 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
           border: `1px solid ${accent}33`,
         }}
       >
-        <div
-          className="w-16 h-16 rounded-full mb-6 flex items-center justify-center"
-          style={{ background: `${accent}22`, border: `2px solid ${accent}55` }}
-        >
-          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: accent }} />
-        </div>
-        <h2 className="text-xl font-bold text-center">{slide.headline}</h2>
-        {slide.subheadline && (
-          <p className="text-sm mt-3 opacity-50 text-center">{slide.subheadline}</p>
+        {/* Background image with heavy overlay */}
+        {slide.image_url && (
+          <div className="absolute inset-0 z-0">
+            <img src={slide.image_url} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0" style={{
+              background: `radial-gradient(ellipse at center, #0a0a0acc 0%, #0a0a0aee 60%, #0a0a0a 100%)`,
+            }} />
+          </div>
         )}
+
+        <div className="relative z-10 flex flex-col items-center">
+          <div
+            className="w-14 h-14 rounded-full mb-5 flex items-center justify-center"
+            style={{ background: `${accent}22`, border: `2px solid ${accent}55`, boxShadow: `0 0 40px ${accent}22` }}
+          >
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 12px ${accent}` }} />
+          </div>
+          <h2 className="text-xl font-bold text-center">{slide.headline}</h2>
+          {slide.subheadline && (
+            <p className="text-sm mt-3 opacity-50 text-center">{slide.subheadline}</p>
+          )}
+          <div className="mt-5 px-5 py-2 rounded-full text-xs font-semibold tracking-wider uppercase" style={{
+            background: `${accent}22`,
+            border: `1px solid ${accent}44`,
+            color: accent,
+          }}>
+            @justoutput
+          </div>
+        </div>
         {dots}
       </div>
     );
   }
 
-  // News slide — handle overflow properly
+  // News slide
   const maxBullets = slide.bullets ? Math.min(slide.bullets.length, 4) : 0;
   const displayBullets = slide.bullets?.slice(0, maxBullets) || [];
 
@@ -97,11 +137,10 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
         style={{ background: `linear-gradient(180deg, ${accent}, transparent)` }}
       />
 
-      {/* Optional image strip */}
       {slide.image_url && (
-        <div className="h-[80px] w-full overflow-hidden shrink-0">
+        <div className="h-[80px] w-full overflow-hidden shrink-0 relative">
           <img src={slide.image_url} alt="" className="w-full h-full object-cover opacity-40" />
-          <div className="absolute top-0 left-0 right-0 h-[80px]" style={{ background: `linear-gradient(180deg, transparent, #0a0a0a)` }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, transparent, #0a0a0a)` }} />
         </div>
       )}
 
@@ -127,7 +166,7 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
         )}
 
         <div className="flex items-center justify-between mt-auto pt-2 shrink-0">
-          <span className="text-[10px] opacity-30">@ai_updates</span>
+          <span className="text-[10px] opacity-30">@justoutput</span>
           <div className="flex gap-1.5">
             {Array.from({ length: total }).map((_, i) => (
               <div
