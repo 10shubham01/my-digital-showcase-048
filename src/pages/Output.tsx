@@ -22,6 +22,7 @@ const Output = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [showGenProgress, setShowGenProgress] = useState(false);
   const [genSuccess, setGenSuccess] = useState(false);
 
@@ -57,15 +58,27 @@ const Output = () => {
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Zap className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">AI Updates</h1>
-            <p className="text-sm text-muted-foreground">Sign in to access the content studio</p>
+            <h1 className="text-2xl font-bold tracking-tight">Output Studio</h1>
+            <p className="text-sm text-muted-foreground">
+              {isSignUp ? "Create an account to get started" : "Sign in to access the content studio"}
+            </p>
           </div>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
               setLoginLoading(true);
-              const { error } = await signIn(loginEmail, loginPassword);
-              if (error) toast.error(error.message);
+              if (isSignUp) {
+                const { error } = await signUp(loginEmail, loginPassword);
+                if (error) {
+                  toast.error(error.message);
+                } else {
+                  toast.success("Check your email to verify your account before signing in.");
+                  setIsSignUp(false);
+                }
+              } else {
+                const { error } = await signIn(loginEmail, loginPassword);
+                if (error) toast.error(error.message);
+              }
               setLoginLoading(false);
             }}
             className="space-y-3"
@@ -85,15 +98,25 @@ const Output = () => {
               placeholder="Password"
               className="w-full bg-muted/50 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               required
+              minLength={6}
             />
             <button
               type="submit"
               disabled={loginLoading}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
-              {loginLoading ? "Signing in..." : "Sign In"}
+              {loginLoading ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Sign Up" : "Sign In")}
             </button>
           </form>
+          <p className="text-center text-xs text-muted-foreground">
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-primary hover:underline font-medium"
+            >
+              {isSignUp ? "Sign In" : "Sign Up"}
+            </button>
+          </p>
         </motion.div>
       </div>
     );
