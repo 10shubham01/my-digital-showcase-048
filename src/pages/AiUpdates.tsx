@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Settings, Sparkles, LayoutGrid, Clock, LogOut, Loader2, Zap, BarChart3 } from "lucide-react";
+import { Settings, Sparkles, LayoutGrid, Clock, LogOut, Loader2, Zap } from "lucide-react";
 import { useTodoAuth } from "@/hooks/useTodoAuth";
 import { useAiPosts, useGeneratePost, type AiPost } from "@/hooks/useAiPosts";
 import { useAiSettings } from "@/hooks/useAiSettings";
 import PostGallery from "@/components/ai-updates/PostGallery";
 import PostEditor from "@/components/ai-updates/PostEditor";
 import AiSettingsPanel from "@/components/ai-updates/AiSettingsPanel";
+import GenerationProgress from "@/components/ai-updates/GenerationProgress";
 import { toast } from "sonner";
-import { Navigate } from "react-router-dom";
 
 const AiUpdates = () => {
   const { session, loading: authLoading, signIn, signOut } = useTodoAuth();
@@ -22,6 +22,8 @@ const AiUpdates = () => {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [showGenProgress, setShowGenProgress] = useState(false);
+  const [genSuccess, setGenSuccess] = useState(false);
 
   // Access check
   const isAllowed = !settingsLoading && settings && (
