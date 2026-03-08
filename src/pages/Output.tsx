@@ -278,4 +278,4 @@ const Output = () => {
   );
 };
 
-export default AiUpdates;
+export default Output;
