@@ -25,6 +25,12 @@ const AiUpdates = () => {
   const [showGenProgress, setShowGenProgress] = useState(false);
   const [genSuccess, setGenSuccess] = useState(false);
 
+  const handleGenComplete = useCallback(() => {
+    setShowGenProgress(false);
+    setGenSuccess(false);
+    toast.success("New post generated!");
+  }, []);
+
   // Access check
   const isAllowed = !settingsLoading && settings && (
     !settings.allowed_email || settings.allowed_email === "" || session?.user?.email === settings.allowed_email
