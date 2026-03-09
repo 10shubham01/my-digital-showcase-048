@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, ChevronRight, Plus, Trash2, Save, Package,
   Instagram, Loader2, Search, Upload, Image as ImageIcon,
+  Palette, Type, FileText, Hash, Sparkles,
 } from "lucide-react";
 import type { AiPost, AiPostSlide } from "@/hooks/useAiPosts";
 import { useUpdateAiPost } from "@/hooks/useAiPosts";
@@ -63,8 +64,8 @@ const ImageSearchPopover = ({
       initial={{ opacity: 0, y: 4, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 4, scale: 0.97 }}
-      className="absolute z-30 top-full mt-2 left-0 right-0 bg-popover border border-border rounded-xl shadow-xl p-3 space-y-2"
-      style={{ maxHeight: 420, overflowY: "auto" }}
+      className="absolute z-30 bottom-full mb-2 left-0 right-0 bg-popover border border-border rounded-xl shadow-xl p-3 space-y-2"
+      style={{ maxHeight: 360, overflowY: "auto" }}
     >
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Search Images</p>
       <div className="flex gap-2">
@@ -82,19 +83,17 @@ const ImageSearchPopover = ({
           className="px-3 py-1.5 text-[10px] rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-50 flex items-center gap-1"
         >
           {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-          {loading ? "Searching..." : "Search"}
+          {loading ? "..." : "Go"}
         </button>
       </div>
 
-      {/* Preview selected image */}
       {previewUrl && (
         <div className="space-y-2 border border-primary/30 rounded-lg p-2">
-          <p className="text-[10px] text-primary font-medium">Preview</p>
-          <img src={previewUrl} alt="" className="w-full h-32 object-cover rounded-lg" />
+          <img src={previewUrl} alt="" className="w-full h-28 object-cover rounded-lg" />
           <div className="flex gap-2">
             <button onClick={() => onSelect(previewUrl)}
               className="flex-1 px-3 py-1.5 text-[10px] rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90">
-              Use This Image
+              Use This
             </button>
             <button onClick={() => setPreviewUrl(null)}
               className="px-3 py-1.5 text-[10px] rounded-lg bg-muted text-muted-foreground hover:text-foreground">
@@ -105,16 +104,16 @@ const ImageSearchPopover = ({
       )}
 
       {images.length > 0 && !previewUrl && (
-        <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="grid grid-cols-3 gap-1.5 mt-2">
           {images.map((img, i) => (
             <button
               key={i}
               onClick={() => setPreviewUrl(img.url)}
-              className="relative rounded-lg overflow-hidden group h-20 border border-border/30 hover:border-primary/50 transition-colors"
+              className="relative rounded-lg overflow-hidden group h-16 border border-border/30 hover:border-primary/50 transition-colors"
             >
               <img src={img.url} alt={img.title} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-[9px] font-medium">Preview</span>
+                <span className="text-white text-[8px] font-medium">Preview</span>
               </div>
             </button>
           ))}
@@ -129,12 +128,16 @@ const ImageSearchPopover = ({
   );
 };
 
+/* ── Editor Tab types ── */
+type EditorTab = "content" | "slide" | "image" | "style";
+
 const PostEditor = ({ post, onClose }: PostEditorProps) => {
   const [title, setTitle] = useState(post.title);
   const [summary, setSummary] = useState(post.summary || "");
   const [hashtags, setHashtags] = useState(post.hashtags.join(", "));
   const [slides, setSlides] = useState<AiPostSlide[]>(post.slides || []);
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeTab, setActiveTab] = useState<EditorTab>("content");
   const [exporting, setExporting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [showImageSearch, setShowImageSearch] = useState(false);
@@ -251,7 +254,6 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
     }
   };
 
-  /* ── Firecrawl Image Search — passes post context ── */
   const getPostContext = () => {
     const parts = [title];
     if (summary) parts.push(summary);
@@ -283,32 +285,25 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
     toast.success("Image updated!");
   };
 
-  /* ── File upload — uploads to cloud storage ── */
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-
     setUploadingImage(true);
     try {
       const ext = file.name.split(".").pop() || "png";
       const path = `${post.id}/${Date.now()}.${ext}`;
-      
       const { error: uploadError } = await supabase.storage
         .from("slide-images")
         .upload(path, file, { contentType: file.type, upsert: true });
-
       if (uploadError) throw uploadError;
-
       const { data: { publicUrl } } = supabase.storage
         .from("slide-images")
         .getPublicUrl(path);
-
       updateSlide("image_url", publicUrl);
-      toast.success("Image uploaded & saved!");
+      toast.success("Image uploaded!");
     } catch (err: any) {
       toast.error(err.message || "Upload failed");
-      // Fallback to object URL
       const objectUrl = URL.createObjectURL(file);
       updateSlide("image_url", objectUrl);
     } finally {
@@ -316,14 +311,14 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
     }
   };
 
-  const getImageLabel = (url: string) => {
-    if (!url) return "";
-    if (url.startsWith("data:image")) return "Embedded image";
-    if (url.startsWith("blob:")) return "Uploaded image (unsaved)";
-    try { return new URL(url).hostname; } catch { return "Image"; }
-  };
-
   const defaultSearchQuery = currentSlide?.headline || title || "";
+
+  const tabs: { id: EditorTab; icon: any; label: string }[] = [
+    { id: "content", icon: FileText, label: "Post" },
+    { id: "slide", icon: Type, label: "Slide" },
+    { id: "image", icon: ImageIcon, label: "Media" },
+    { id: "style", icon: Palette, label: "Style" },
+  ];
 
   return (
     <>
@@ -332,225 +327,265 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md"
       />
       <motion.div
-        initial={{ y: "100%" }}
-        animate={{ y: 0 }}
-        exit={{ y: "100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
-        className="fixed inset-x-0 bottom-0 top-12 z-50 bg-background rounded-t-3xl overflow-hidden flex flex-col"
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.92 }}
+        transition={{ type: "spring", damping: 28, stiffness: 350 }}
+        className="fixed inset-4 md:inset-8 z-50 bg-card rounded-2xl overflow-hidden flex flex-col border border-border/50 shadow-2xl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-border">
-          <h2 className="text-sm font-bold tracking-tight text-muted-foreground uppercase">Edit Post</h2>
+        {/* ─── Header ─── */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border/50 bg-muted/30">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg bg-gradient-fire flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold tracking-tight">Edit Post</h2>
+              <p className="text-[10px] text-muted-foreground">{slides.length} slides · {post.status}</p>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button onClick={handleExportZip} disabled={exporting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted text-xs font-medium hover:bg-muted/80 transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted/50 border border-border/50 text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50">
               {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Package className="w-3.5 h-3.5" />}
-              {exporting ? "Exporting..." : "Export Zip"}
+              Export
             </button>
             <button onClick={handlePublishToInstagram} disabled={publishing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
               {publishing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Instagram className="w-3.5 h-3.5" />}
-              {publishing ? "Publishing..." : "Publish"}
+              Publish
             </button>
             <button onClick={handleSave} disabled={updatePost.isPending}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
-              <Save className="w-3.5 h-3.5" /> {updatePost.isPending ? "Saving..." : "Save"}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50">
+              <Save className="w-3.5 h-3.5" /> {updatePost.isPending ? "..." : "Save"}
             </button>
-            <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground">
+            <button onClick={onClose} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 flex overflow-hidden">
-          {/* ─── Preview ─── */}
-          <div className="flex-1 flex flex-col items-center justify-center bg-black/50 p-6">
+        {/* ─── Preview Area (top) ─── */}
+        <div className="flex-1 flex flex-col items-center justify-center bg-black/40 relative overflow-hidden min-h-0">
+          {/* Subtle grid background */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: "radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+          }} />
+
+          <div className="relative z-10 flex flex-col items-center gap-4 py-6">
             <div ref={slideRef}>
               {currentSlide && <CarouselSlide slide={currentSlide} index={activeSlide} total={slides.length} />}
             </div>
-            <div className="flex items-center gap-3 mt-6">
+
+            {/* Slide navigation */}
+            <div className="flex items-center gap-2">
               <button onClick={() => setActiveSlide((p) => Math.max(0, p - 1))} disabled={activeSlide === 0}
-                className="p-2 rounded-full bg-white/10 text-white disabled:opacity-30">
+                className="p-1.5 rounded-lg bg-white/10 text-white disabled:opacity-20 hover:bg-white/20 transition-colors">
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 bg-white/5 rounded-lg p-1">
                 {slides.map((_, i) => (
                   <button key={i} onClick={() => setActiveSlide(i)}
-                    className={`w-8 h-8 rounded-lg text-xs font-mono transition-all ${i === activeSlide ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/50 hover:bg-white/20"}`}>
+                    className={`w-7 h-7 rounded-md text-[10px] font-mono font-bold transition-all ${
+                      i === activeSlide
+                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                        : "text-white/40 hover:text-white/70 hover:bg-white/10"
+                    }`}>
                     {i + 1}
                   </button>
                 ))}
               </div>
               <button onClick={() => setActiveSlide((p) => Math.min(slides.length - 1, p + 1))} disabled={activeSlide === slides.length - 1}
-                className="p-2 rounded-full bg-white/10 text-white disabled:opacity-30">
+                className="p-1.5 rounded-lg bg-white/10 text-white disabled:opacity-20 hover:bg-white/20 transition-colors">
                 <ChevronRight className="w-4 h-4" />
               </button>
+              <div className="w-px h-5 bg-white/10 mx-1" />
+              <button onClick={addSlide} className="p-1.5 rounded-lg bg-white/10 text-white/50 hover:text-white hover:bg-white/20 transition-colors">
+                <Plus className="w-4 h-4" />
+              </button>
+              {slides.length > 2 && (
+                <button onClick={() => removeSlide(activeSlide)} className="p-1.5 rounded-lg bg-white/10 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* ─── Editor Panel ─── */}
-          <div className="w-[380px] border-l border-border overflow-y-auto p-5 space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Title</label>
-              <AutoGrow value={title} onChange={setTitle} className="text-sm font-semibold border-b border-border/30 focus-within:border-primary/50 pb-1" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Caption</label>
-              <AutoGrow value={summary} onChange={setSummary} placeholder="Write an engaging caption..." className="text-xs text-muted-foreground border-b border-border/30 focus-within:border-primary/50 pb-1" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Hashtags</label>
-              <AutoGrow value={hashtags} onChange={setHashtags} placeholder="ai, machinelearning, tech" className="text-xs text-muted-foreground border-b border-border/30 focus-within:border-primary/50 pb-1" />
-            </div>
+        {/* ─── Bottom Editor Panel ─── */}
+        <div className="border-t border-border/50 bg-card">
+          {/* Tabs */}
+          <div className="flex items-center gap-0 px-4 border-b border-border/30">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-all border-b-2 -mb-px ${
+                  activeTab === tab.id
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <tab.icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-            <div className="h-px bg-border/50" />
-
-            {currentSlide && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                    Slide {activeSlide + 1} / {slides.length} -- {currentSlide.type}
-                  </h3>
-                  <div className="flex gap-1">
-                    <button onClick={addSlide} className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    {slides.length > 2 && (
-                      <button onClick={() => removeSlide(activeSlide)} className="p-1.5 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Headline */}
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Headline</label>
-                  <AutoGrow value={currentSlide.headline} onChange={(v) => updateSlide("headline", v)} className="text-sm font-semibold" />
-                </div>
-
-                {(currentSlide.type === "cover" || currentSlide.type === "cta") && (
-                  <div className="space-y-1">
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Subheadline</label>
-                    <AutoGrow value={currentSlide.subheadline || ""} onChange={(v) => updateSlide("subheadline", v)} className="text-xs text-muted-foreground" />
+          {/* Tab content */}
+          <div className="p-4 overflow-x-auto" style={{ maxHeight: 200 }}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.15 }}
+              >
+                {/* Post tab */}
+                {activeTab === "content" && (
+                  <div className="flex gap-6">
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Title</label>
+                      <AutoGrow value={title} onChange={setTitle} className="text-sm font-semibold border-b border-border/30 focus-within:border-primary/50 pb-1" />
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Caption</label>
+                      <AutoGrow value={summary} onChange={setSummary} placeholder="Write a caption..." className="text-xs text-muted-foreground border-b border-border/30 focus-within:border-primary/50 pb-1" />
+                    </div>
+                    <div className="w-60 shrink-0 space-y-2">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium flex items-center gap-1"><Hash className="w-3 h-3" /> Hashtags</label>
+                      <AutoGrow value={hashtags} onChange={setHashtags} placeholder="ai, tech" className="text-xs text-muted-foreground border-b border-border/30 focus-within:border-primary/50 pb-1" />
+                    </div>
                   </div>
                 )}
 
-                {currentSlide.type === "news" && (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Source</label>
-                      <AutoGrow value={currentSlide.source || ""} onChange={(v) => updateSlide("source", v)} placeholder="Source name" className="text-xs text-muted-foreground" />
+                {/* Slide tab */}
+                {activeTab === "slide" && currentSlide && (
+                  <div className="flex gap-6">
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
+                        Headline — Slide {activeSlide + 1} ({currentSlide.type})
+                      </label>
+                      <AutoGrow value={currentSlide.headline} onChange={(v) => updateSlide("headline", v)} className="text-sm font-semibold" />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Bullets</label>
-                      {(currentSlide.bullets || []).map((b, i) => (
-                        <div key={i} className="flex gap-2 items-start group">
-                          <span className="text-muted-foreground text-xs mt-0.5 shrink-0">--</span>
-                          <AutoGrow value={b} onChange={(v) => {
-                            const nb = [...(currentSlide.bullets || [])]; nb[i] = v; updateSlide("bullets", nb);
-                          }} className="text-xs flex-1" />
-                          <button onClick={() => updateSlide("bullets", (currentSlide.bullets || []).filter((_, j) => j !== i))}
-                            className="p-1 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <X className="w-3 h-3" />
+                    {(currentSlide.type === "cover" || currentSlide.type === "cta") && (
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Subheadline</label>
+                        <AutoGrow value={currentSlide.subheadline || ""} onChange={(v) => updateSlide("subheadline", v)} className="text-xs text-muted-foreground" />
+                      </div>
+                    )}
+                    {currentSlide.type === "news" && (
+                      <>
+                        <div className="w-40 shrink-0 space-y-2">
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Source</label>
+                          <AutoGrow value={currentSlide.source || ""} onChange={(v) => updateSlide("source", v)} placeholder="Source" className="text-xs text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Bullets</label>
+                          {(currentSlide.bullets || []).map((b, i) => (
+                            <div key={i} className="flex gap-1.5 items-center group">
+                              <span className="text-muted-foreground text-[10px] shrink-0">•</span>
+                              <input
+                                value={b}
+                                onChange={(e) => {
+                                  const nb = [...(currentSlide.bullets || [])]; nb[i] = e.target.value; updateSlide("bullets", nb);
+                                }}
+                                className="flex-1 bg-transparent text-xs outline-none border-b border-transparent focus:border-border/50"
+                              />
+                              <button onClick={() => updateSlide("bullets", (currentSlide.bullets || []).filter((_, j) => j !== i))}
+                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <button onClick={() => updateSlide("bullets", [...(currentSlide.bullets || []), ""])} className="text-[10px] text-primary hover:underline">
+                            + Add
                           </button>
                         </div>
-                      ))}
-                      <button onClick={() => updateSlide("bullets", [...(currentSlide.bullets || []), ""])} className="text-[10px] text-primary hover:underline">
-                        + Add bullet
-                      </button>
-                    </div>
-                  </>
+                      </>
+                    )}
+                  </div>
                 )}
 
-                <div className="h-px bg-border/30" />
-
-                {/* ─── Image Section ─── */}
-                <div className="space-y-2 relative">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">Slide Image</label>
-
-                  {currentSlide.image_url ? (
-                    <div className="space-y-2">
-                      <div className="relative rounded-lg overflow-hidden group">
-                        <img src={currentSlide.image_url} alt="" className="w-full h-24 object-cover rounded-lg"
+                {/* Image tab */}
+                {activeTab === "image" && currentSlide && (
+                  <div className="flex gap-4 items-start relative">
+                    {currentSlide.image_url && (
+                      <div className="relative rounded-lg overflow-hidden group w-32 h-20 shrink-0">
+                        <img src={currentSlide.image_url} alt="" className="w-full h-full object-cover"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
                         {uploadingImage && (
                           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                            <Loader2 className="w-5 h-5 text-white animate-spin" />
+                            <Loader2 className="w-4 h-4 text-white animate-spin" />
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <button onClick={() => { setShowImageSearch(true); setImageSearchResults([]); }}
-                            className="p-2 rounded-lg bg-white/20 text-white text-[10px] flex items-center gap-1 hover:bg-white/30">
-                            <Search className="w-3 h-3" /> Find New
-                          </button>
-                          <button onClick={() => fileInputRef.current?.click()}
-                            className="p-2 rounded-lg bg-white/20 text-white text-[10px] flex items-center gap-1 hover:bg-white/30">
-                            <Upload className="w-3 h-3" /> Upload
-                          </button>
-                          <button onClick={() => updateSlide("image_url", "")}
-                            className="p-2 rounded-lg bg-white/20 text-white text-[10px] flex items-center gap-1 hover:bg-white/30">
-                            <Trash2 className="w-3 h-3" /> Remove
-                          </button>
-                        </div>
                       </div>
-                      <p className="text-[9px] text-muted-foreground/40 truncate">{getImageLabel(currentSlide.image_url)}</p>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
+                    )}
+                    <div className="flex gap-2 flex-wrap items-start">
                       <button onClick={() => { setShowImageSearch(true); setImageSearchResults([]); }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg border border-dashed border-border/50 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
-                        <Search className="w-3.5 h-3.5" /> Search Images
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/50 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
+                        <Search className="w-3.5 h-3.5" /> Search
                       </button>
                       <button onClick={() => fileInputRef.current?.click()}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-lg border border-dashed border-border/50 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border/50 text-[10px] text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors">
                         <Upload className="w-3.5 h-3.5" /> Upload
                       </button>
-                    </div>
-                  )}
-
-                  {/* Paste URL */}
-                  <input
-                    value={currentSlide.image_url?.startsWith("data:") || currentSlide.image_url?.startsWith("blob:") ? "" : (currentSlide.image_url || "")}
-                    onChange={(e) => updateSlide("image_url", e.target.value)}
-                    placeholder="Or paste image URL..."
-                    className="w-full bg-transparent text-[10px] text-muted-foreground/50 outline-none border-none"
-                  />
-
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-
-                  <AnimatePresence>
-                    {showImageSearch && (
-                      <ImageSearchPopover
-                        loading={imageSearchLoading}
-                        images={imageSearchResults}
-                        onSearch={handleImageSearch}
-                        onSelect={handleSelectImage}
-                        onClose={() => setShowImageSearch(false)}
-                        defaultQuery={defaultSearchQuery}
+                      {currentSlide.image_url && (
+                        <button onClick={() => updateSlide("image_url", "")}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-destructive/30 text-[10px] text-destructive/60 hover:border-destructive hover:text-destructive transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" /> Remove
+                        </button>
+                      )}
+                      <input
+                        value={currentSlide.image_url?.startsWith("data:") || currentSlide.image_url?.startsWith("blob:") ? "" : (currentSlide.image_url || "")}
+                        onChange={(e) => updateSlide("image_url", e.target.value)}
+                        placeholder="Or paste URL..."
+                        className="flex-1 min-w-[200px] bg-muted/30 rounded-lg px-3 py-2 text-[10px] text-muted-foreground outline-none border border-border/30 focus:border-primary/30"
                       />
-                    )}
-                  </AnimatePresence>
-                </div>
+                    </div>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
 
-                <div className="h-px bg-border/30" />
-
-                {/* Accent color */}
-                <div className="space-y-2">
-                  <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Accent Color</label>
-                  <div className="flex gap-2 flex-wrap">
-                    {ACCENT_PRESETS.map((c) => (
-                      <button key={c} onClick={() => updateSlide("accent_color", c)}
-                        className={`w-6 h-6 rounded-full transition-transform ${currentSlide.accent_color === c ? "scale-125 ring-2 ring-ring ring-offset-2 ring-offset-background" : "hover:scale-110"}`}
-                        style={{ backgroundColor: c }} />
-                    ))}
+                    <AnimatePresence>
+                      {showImageSearch && (
+                        <ImageSearchPopover
+                          loading={imageSearchLoading}
+                          images={imageSearchResults}
+                          onSearch={handleImageSearch}
+                          onSelect={handleSelectImage}
+                          onClose={() => setShowImageSearch(false)}
+                          defaultQuery={defaultSearchQuery}
+                        />
+                      )}
+                    </AnimatePresence>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
+
+                {/* Style tab */}
+                {activeTab === "style" && currentSlide && (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium mb-2 block">Accent Color</label>
+                      <div className="flex gap-2">
+                        {ACCENT_PRESETS.map((c) => (
+                          <button key={c} onClick={() => updateSlide("accent_color", c)}
+                            className={`w-7 h-7 rounded-full transition-all ${
+                              currentSlide.accent_color === c
+                                ? "scale-125 ring-2 ring-ring ring-offset-2 ring-offset-card"
+                                : "hover:scale-110"
+                            }`}
+                            style={{ backgroundColor: c }} />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </motion.div>

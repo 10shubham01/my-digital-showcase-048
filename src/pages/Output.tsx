@@ -10,6 +10,7 @@ import AiSettingsPanel from "@/components/ai-updates/AiSettingsPanel";
 import GenerationProgress from "@/components/ai-updates/GenerationProgress";
 import ThemeToggle from "@/components/ThemeToggle";
 import Logo from "@/components/Logo";
+import TerminalLogin from "@/components/todo/TerminalLogin";
 import { toast } from "sonner";
 
 const Output = () => {
@@ -21,10 +22,6 @@ const Output = () => {
   const [view, setView] = useState<"dashboard" | "gallery">("dashboard");
   const [showSettings, setShowSettings] = useState(false);
   const [editingPost, setEditingPost] = useState<AiPost | null>(null);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [showGenProgress, setShowGenProgress] = useState(false);
   const [genSuccess, setGenSuccess] = useState(false);
 
@@ -49,79 +46,7 @@ const Output = () => {
   }
 
   if (!session) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-sm space-y-6"
-        >
-          <div className="text-center space-y-2">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Logo className="w-8 h-8" />
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight">Output Studio</h1>
-            <p className="text-sm text-muted-foreground">
-              {isSignUp ? "Create an account to get started" : "Sign in to access the content studio"}
-            </p>
-          </div>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setLoginLoading(true);
-              if (isSignUp) {
-                const { error } = await signUp(loginEmail, loginPassword);
-                if (error) {
-                  toast.error(error.message);
-                } else {
-                  toast.success("Check your email to verify your account before signing in.");
-                  setIsSignUp(false);
-                }
-              } else {
-                const { error } = await signIn(loginEmail, loginPassword);
-                if (error) toast.error(error.message);
-              }
-              setLoginLoading(false);
-            }}
-            className="space-y-3"
-          >
-            <input
-              type="email"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="Email"
-              className="w-full bg-muted/50 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-              required
-            />
-            <input
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              placeholder="Password"
-              className="w-full bg-muted/50 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-              required
-              minLength={6}
-            />
-            <button
-              type="submit"
-              disabled={loginLoading}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
-            >
-              {loginLoading ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Sign Up" : "Sign In")}
-            </button>
-          </form>
-          <p className="text-center text-xs text-muted-foreground">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-primary hover:underline font-medium"
-            >
-              {isSignUp ? "Sign In" : "Sign Up"}
-            </button>
-          </p>
-        </motion.div>
-      </div>
-    );
+    return <TerminalLogin onLogin={signIn} onSignUp={signUp} />;
   }
 
   if (!settingsLoading && !isAllowed) {
