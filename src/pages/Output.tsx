@@ -19,7 +19,7 @@ const Output = () => {
   const { data: posts = [], isLoading: postsLoading } = useAiPosts();
   const generatePost = useGeneratePost();
 
-  const [view, setView] = useState<"dashboard" | "gallery">("dashboard");
+  const [view, setView] = useState<"feed" | "all">("feed");
   const [showSettings, setShowSettings] = useState(false);
   const [editingPost, setEditingPost] = useState<AiPost | null>(null);
   const [showGenProgress, setShowGenProgress] = useState(false);
@@ -90,20 +90,20 @@ const Output = () => {
             </div>
             <div className="flex items-center gap-1 bg-muted/50 rounded-xl p-1 ml-4">
               <button
-                onClick={() => setView("dashboard")}
+                onClick={() => setView("feed")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  view === "dashboard" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  view === "feed" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
-                <Clock className="w-3.5 h-3.5" /> Dashboard
+                <Clock className="w-3.5 h-3.5" /> Feed
               </button>
               <button
-                onClick={() => setView("gallery")}
+                onClick={() => setView("all")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  view === "gallery" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  view === "all" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                 }`}
               >
-                <LayoutGrid className="w-3.5 h-3.5" /> Gallery
+                <LayoutGrid className="w-3.5 h-3.5" /> All Posts
               </button>
             </div>
           </div>
@@ -170,39 +170,19 @@ const Output = () => {
           </div>
         ) : (
           <>
-            {view === "dashboard" && (
-              <div className="space-y-6">
-                {pendingCount > 0 && (
-                  <div>
-                    <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-4">
-                      Awaiting Review ({pendingCount})
-                    </h2>
-                    <PostGallery
-                      posts={posts.filter((p) => p.status === "pending")}
-                      onEdit={setEditingPost}
-                    />
-                  </div>
-                )}
-                {posts.filter((p) => p.status !== "pending").length > 0 && (
-                  <div>
-                    <h2 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium mb-4">
-                      Recent Posts
-                    </h2>
-                    <PostGallery
-                      posts={posts.filter((p) => p.status !== "pending").slice(0, 9)}
-                      onEdit={setEditingPost}
-                    />
-                  </div>
-                )}
-                {posts.length === 0 && (
-                  <div className="text-center py-20">
-                    <Sparkles className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
-                    <p className="text-muted-foreground text-sm">No posts yet. Click "Generate Post" to create your first one.</p>
-                  </div>
-                )}
+            {view === "feed" && (
+              <PostGallery
+                posts={pendingCount > 0 ? posts.filter((p) => p.status === "pending") : posts.slice(0, 10)}
+                onEdit={setEditingPost}
+              />
+            )}
+            {view === "all" && <PostGallery posts={posts} onEdit={setEditingPost} />}
+            {posts.length === 0 && (
+              <div className="text-center py-20">
+                <Sparkles className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground text-sm">No posts yet. Click "Generate Post" to create your first one.</p>
               </div>
             )}
-            {view === "gallery" && <PostGallery posts={posts} onEdit={setEditingPost} />}
           </>
         )}
       </div>
