@@ -15,10 +15,14 @@ serve(async (req) => {
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
 
-    const { query } = await req.json();
+    const { query, context } = await req.json();
     if (!query) throw new Error("Query is required");
 
-    // Search for relevant images using Firecrawl
+    // Build search query with post context for relevance
+    const searchQuery = context
+      ? `${query} ${context.slice(0, 100)} high quality image`
+      : `${query} technology AI high quality image`;
+
     const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
       method: "POST",
       headers: {
@@ -26,8 +30,8 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        query: `${query} technology AI`,
-        limit: 8,
+        query: searchQuery,
+        limit: 10,
         scrapeOptions: { formats: ["links"] },
       }),
     });
