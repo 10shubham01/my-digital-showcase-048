@@ -61,6 +61,11 @@ export default {
           orange: "hsl(var(--accent-orange))",
           pop: "hsl(var(--accent-pop))",
         },
+        fire: {
+          red: "hsl(var(--fire-red))",
+          orange: "hsl(var(--fire-orange))",
+          gold: "hsl(var(--fire-gold))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",

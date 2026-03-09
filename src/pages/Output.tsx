@@ -8,6 +8,8 @@ import PostGallery from "@/components/ai-updates/PostGallery";
 import PostEditor from "@/components/ai-updates/PostEditor";
 import AiSettingsPanel from "@/components/ai-updates/AiSettingsPanel";
 import GenerationProgress from "@/components/ai-updates/GenerationProgress";
+import ThemeToggle from "@/components/ThemeToggle";
+import Logo from "@/components/Logo";
 import { toast } from "sonner";
 
 const Output = () => {
@@ -56,7 +58,7 @@ const Output = () => {
         >
           <div className="text-center space-y-2">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-6 h-6 text-primary" />
+              <Logo className="w-8 h-8" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Output Studio</h1>
             <p className="text-sm text-muted-foreground">
@@ -158,7 +160,7 @@ const Output = () => {
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" />
+              <Logo className="w-6 h-6" />
               <h1 className="text-lg font-bold tracking-tight">AI Updates Studio</h1>
             </div>
             <div className="flex items-center gap-1 bg-muted/50 rounded-xl p-1 ml-4">
@@ -185,7 +187,7 @@ const Output = () => {
             <button
               onClick={handleGenerate}
               disabled={generatePost.isPending}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-primary/80 text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-lg shadow-primary/20"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-fire text-primary-foreground text-xs font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity shadow-lg shadow-primary/20"
             >
               {generatePost.isPending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -194,6 +196,7 @@ const Output = () => {
               )}
               Generate Post
             </button>
+            <ThemeToggle />
             <button
               onClick={() => setShowSettings(true)}
               className="p-2.5 rounded-xl bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"

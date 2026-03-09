@@ -7,32 +7,32 @@
 @layer base {
   :root {
     --background: 0 0% 98%;
-    --foreground: 0 0% 8%;
+    --foreground: 0 100% 8%;
 
     --card: 0 0% 96%;
-    --card-foreground: 0 0% 8%;
+    --card-foreground: 0 100% 8%;
 
     --popover: 0 0% 96%;
-    --popover-foreground: 0 0% 8%;
+    --popover-foreground: 0 100% 8%;
 
-    --primary: 0 0% 8%;
+    --primary: 9 100% 50%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 92%;
-    --secondary-foreground: 0 0% 35%;
+    --secondary: 25 100% 50%;
+    --secondary-foreground: 0 0% 98%;
 
     --muted: 0 0% 90%;
     --muted-foreground: 0 0% 45%;
 
-    --accent: 0 0% 8%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 49 100% 50%;
+    --accent-foreground: 0 100% 8%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 0 0% 85%;
     --input: 0 0% 85%;
-    --ring: 0 0% 8%;
+    --ring: 9 100% 50%;
 
     --radius: 0.5rem;
 
@@ -41,6 +41,11 @@
     --font-display: "Instrument Serif", Georgia, serif;
     --font-mono: "Montserrat Alternates", system-ui, sans-serif;
 
+    /* Fire theme colors */
+    --fire-red: 9 100% 50%;
+    --fire-orange: 25 100% 50%;
+    --fire-gold: 49 100% 50%;
+    
     /* Color accents */
     --accent-blue: 220 90% 56%;
     --accent-cyan: 187 85% 53%;
@@ -50,33 +55,38 @@
   }
 
   .dark {
-    --background: 0 0% 3%;
-    --foreground: 0 0% 92%;
+    --background: 12 8% 4%;
+    --foreground: 25 20% 92%;
 
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 92%;
+    --card: 12 8% 8%;
+    --card-foreground: 25 20% 92%;
 
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 92%;
+    --popover: 12 8% 8%;
+    --popover-foreground: 25 20% 92%;
 
-    --primary: 0 0% 92%;
-    --primary-foreground: 0 0% 3%;
+    --primary: 25 100% 50%;
+    --primary-foreground: 12 8% 4%;
 
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 65%;
+    --secondary: 9 100% 50%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 12 8% 12%;
+    --muted-foreground: 0 0% 55%;
 
-    --accent: 0 0% 92%;
-    --accent-foreground: 0 0% 3%;
+    --accent: 49 100% 50%;
+    --accent-foreground: 12 8% 4%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
-    --ring: 0 0% 92%;
+    --border: 12 8% 18%;
+    --input: 12 8% 18%;
+    --ring: 25 100% 50%;
+
+    /* Fire theme colors - brighter for dark mode */
+    --fire-red: 9 100% 55%;
+    --fire-orange: 25 100% 55%;
+    --fire-gold: 49 100% 55%;
 
     /* Color accents - brighter for dark mode */
     --accent-blue: 220 100% 65%;
@@ -120,6 +130,15 @@
   .text-gradient {
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(135deg, hsl(0 0% 95%), hsl(0 0% 50%));
+  }
+
+  .text-gradient-fire {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(var(--fire-red)), hsl(var(--fire-orange)), hsl(var(--fire-gold)));
+  }
+
+  .bg-gradient-fire {
+    background-image: linear-gradient(135deg, hsl(var(--fire-red)), hsl(var(--fire-orange)), hsl(var(--fire-gold)));
   }
 
   .bg-grid {

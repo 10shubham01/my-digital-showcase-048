@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import ThemeToggle from "./ThemeToggle";
+import Logo from "./Logo";
 
 const Navbar = () => {
   return (
@@ -12,9 +13,9 @@ const Navbar = () => {
       <motion.a
         href="#"
         whileHover={{ scale: 1.05 }}
-        className="font-heading text-lg tracking-[0.2em] uppercase text-foreground">
-
-        SG.
+        className="flex items-center gap-3">
+        <Logo className="w-8 h-8" />
+        <span className="font-heading text-lg tracking-[0.2em] uppercase text-foreground">SG.</span>
       </motion.a>
 
       <div className="flex items-center gap-4">
