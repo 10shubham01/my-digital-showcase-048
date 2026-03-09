@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Shuffle array in place
+function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -22,14 +31,25 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { data: settings } = await supabase
-      .from("ai_settings")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
+    // Fetch settings + recent posts in parallel
+    const [settingsRes, recentPostsRes] = await Promise.all([
+      supabase.from("ai_settings").select("*").eq("user_id", user.id).single(),
+      supabase.from("ai_posts").select("source_urls").eq("user_id", user.id)
+        .order("created_at", { ascending: false }).limit(10),
+    ]);
 
+    const settings = settingsRes.data;
     const systemPrompt = settings?.system_prompt || "You are a sharp, witty tech content creator making Instagram carousel posts about the latest AI/ML news. Your tone is conversational, punchy, and fun to read -- like explaining tech to a smart friend over coffee.";
     const model = settings?.model || "google/gemini-2.5-flash";
+
+    // Build set of previously used URLs for dedup
+    const usedUrls = new Set<string>();
+    for (const post of (recentPostsRes.data || [])) {
+      for (const url of (post.source_urls || [])) {
+        usedUrls.add(url);
+      }
+    }
+    console.log(`Dedup: ${usedUrls.size} URLs from last ${recentPostsRes.data?.length || 0} posts`);
 
     // Step 1: Scrape news
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
@@ -38,13 +58,26 @@ serve(async (req) => {
     const newsItems: string[] = [];
     const sourceUrls: string[] = [];
 
-    const searchQueries = [
-      "latest AI news",
-      "new AI model released",
+    // Build queries from user's news_sources + generic fallbacks, then shuffle
+    const userSources: string[] = settings?.news_sources || [];
+    const siteQueries = userSources.map((domain: string) => `site:${domain} AI news`);
+    const genericQueries = [
+      "latest AI news today",
+      "new AI model released this week",
       "artificial intelligence breakthrough",
+      "AI startup funding news",
+      "machine learning research paper",
+      "AI agent tool launched",
+      "LLM benchmark results new",
+      "generative AI product update",
     ];
 
-    for (const query of searchQueries) {
+    // Shuffle both and combine: site-specific first, then random generic
+    const allQueries = [...shuffle(siteQueries), ...shuffle(genericQueries)];
+    // Pick up to 5 queries to avoid excessive API calls
+    const selectedQueries = allQueries.slice(0, 5);
+
+    for (const query of selectedQueries) {
       if (newsItems.length >= 8) break;
       try {
         const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
@@ -60,9 +93,14 @@ serve(async (req) => {
           }),
         });
         const searchData = await searchResp.json();
-        console.log(`Search "${query}": status=${searchResp.status}, results=${searchData.data?.length || 0}, keys=${Object.keys(searchData)}`);
+        console.log(`Search "${query}": ${searchData.data?.length || 0} results`);
         if (searchData.data) {
           for (const item of searchData.data) {
+            // Skip already-used URLs
+            if (item.url && usedUrls.has(item.url)) {
+              console.log(`Skipping duplicate URL: ${item.url}`);
+              continue;
+            }
             if (item.markdown) newsItems.push(item.markdown.slice(0, 2000));
             if (item.url) sourceUrls.push(item.url);
           }
@@ -74,7 +112,7 @@ serve(async (req) => {
 
     if (newsItems.length === 0) {
       return new Response(
-        JSON.stringify({ error: "No news found. Try again later." }),
+        JSON.stringify({ error: "No new/unique news found. Try again later." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
