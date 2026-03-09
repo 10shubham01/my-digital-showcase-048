@@ -22,10 +22,6 @@ const Output = () => {
   const [view, setView] = useState<"dashboard" | "gallery">("dashboard");
   const [showSettings, setShowSettings] = useState(false);
   const [editingPost, setEditingPost] = useState<AiPost | null>(null);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const [showGenProgress, setShowGenProgress] = useState(false);
   const [genSuccess, setGenSuccess] = useState(false);
 
