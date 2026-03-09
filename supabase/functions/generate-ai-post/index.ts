@@ -7,6 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Shuffle array in place
 function shuffle<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -24,7 +25,6 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -33,65 +33,67 @@ serve(async (req) => {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
-
     if (userError || !user) throw new Error("Unauthorized");
 
+    // Fetch settings + recent posts in parallel
     const [settingsRes, recentPostsRes] = await Promise.all([
       supabase.from("ai_settings").select("*").eq("user_id", user.id).single(),
-
       supabase
         .from("ai_posts")
         .select("source_urls")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(10),
     ]);
 
     const settings = settingsRes.data;
-
     const systemPrompt =
       settings?.system_prompt ||
-      "You are a sharp, witty tech content creator making Instagram carousel posts about the latest AI/ML news.";
-
+      "You are a sharp, witty tech content creator making Instagram carousel posts about the latest AI/ML news. Your tone is conversational, punchy, and fun to read -- like explaining tech to a smart friend over coffee.";
     const model = settings?.model || "google/gemini-2.5-flash";
 
+    // Build set of previously used URLs for dedup
     const usedUrls = new Set<string>();
-
     for (const post of recentPostsRes.data || []) {
       for (const url of post.source_urls || []) {
         usedUrls.add(url);
       }
     }
+    console.log(`Dedup: ${usedUrls.size} URLs from last ${recentPostsRes.data?.length || 0} posts`);
 
+    // Step 1: Scrape news
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
 
     const newsItems: string[] = [];
     const sourceUrls: string[] = [];
-    const usedTitles = new Set<string>();
 
-    const queries = shuffle([
+    // Generic queries first (these actually work), then site-specific as bonus
+    const genericQueries = shuffle([
       "latest AI news",
-      "AI startup funding",
       "new AI model released",
-      "generative AI tools launch",
-      "machine learning research breakthrough",
-      "OpenAI Google Anthropic AI news",
-      "AI robotics automation news",
+      "artificial intelligence breakthrough",
+      "AI startup funding",
+      "machine learning research",
+      "AI agent tool launched",
       "LLM benchmark results",
-      "AI agents tools released",
+      "generative AI product update",
+      "OpenAI Google Anthropic news",
+      "AI robotics automation news",
     ]);
 
+    // Pick 4 generic queries (reliable) + 1 site query (bonus)
     const userSources: string[] = settings?.news_sources || [];
-    for (const src of userSources) {
-      queries.push(`${src} AI`);
-    }
+    const siteQueries = shuffle(userSources.map((domain: string) => `${domain} AI`));
+    const selectedQueries = [
+      ...genericQueries.slice(0, 4),
+      ...(siteQueries.length > 0 ? [siteQueries[0]] : [genericQueries[4]]),
+    ];
 
-    for (const query of queries) {
+    for (const query of selectedQueries) {
       if (newsItems.length >= 8) break;
-
       try {
-        const resp = await fetch("https://api.firecrawl.dev/v1/search", {
+        const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
@@ -103,79 +105,34 @@ serve(async (req) => {
             scrapeOptions: { formats: ["markdown"] },
           }),
         });
-
-        if (!resp.ok) {
-          console.error("Firecrawl error:", await resp.text());
-          continue;
-        }
-
-        const data = await resp.json();
-
-        console.log(`Search "${query}" → ${data.data?.length || 0} results`);
-
-        for (const item of data.data || []) {
-          if (!item) continue;
-
-          if (item.url && usedUrls.has(item.url)) continue;
-
-          const title = (item.title || "").toLowerCase();
-
-          if (title && usedTitles.has(title)) continue;
-
-          let content = "";
-
-          if (item.markdown) {
-            content = item.markdown.slice(0, 2000);
-          } else if (item.title || item.description) {
-            content = `${item.title}\n${item.description || ""}`;
+        const searchData = await searchResp.json();
+        console.log(`Search "${query}": ${searchData.data?.length || 0} results`);
+        if (searchData.data) {
+          for (const item of searchData.data) {
+            // Skip already-used URLs
+            if (item.url && usedUrls.has(item.url)) {
+              console.log(`Skipping duplicate URL: ${item.url}`);
+              continue;
+            }
+            if (item.markdown) newsItems.push(item.markdown.slice(0, 2000));
+            if (item.url) sourceUrls.push(item.url);
           }
-
-          if (!content) continue;
-
-          newsItems.push(content);
-
-          if (item.url) sourceUrls.push(item.url);
-
-          if (title) usedTitles.add(title);
-
-          if (newsItems.length >= 8) break;
         }
-      } catch (err) {
-        console.error("Search failed:", err);
-      }
-    }
-
-    if (newsItems.length < 3) {
-      console.warn("Fallback search triggered");
-
-      const resp = await fetch("https://api.firecrawl.dev/v1/search", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          query: "latest artificial intelligence news",
-          limit: 5,
-          scrapeOptions: { formats: ["markdown"] },
-        }),
-      });
-
-      const data = await resp.json();
-
-      for (const item of data.data || []) {
-        if (item.markdown) {
-          newsItems.push(item.markdown.slice(0, 2000));
-          sourceUrls.push(item.url);
-        }
+      } catch (e) {
+        console.error("Search error:", e);
       }
     }
 
     if (newsItems.length === 0) {
-      throw new Error("Failed to collect news");
+      return new Response(JSON.stringify({ error: "No new/unique news found. Try again later." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
+    // Step 2: Generate post with Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const newsContext = newsItems.slice(0, 8).join("\n\n---\n\n");
 
@@ -191,35 +148,158 @@ serve(async (req) => {
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Create an Instagram carousel post from this AI news:
+            content: `Based on the following AI/tech news scraped today, create an Instagram carousel post.
 
+IMPORTANT RULES:
+- Do NOT use any emojis anywhere in the content. Zero emojis.
+- Write in a punchy, conversational tone. Short sentences. Active voice.
+- Make headlines catchy and curiosity-driven (like "This changes everything" or "Here's what nobody's talking about")
+- Bullet points should be concise insights, not boring summaries. Max 3-4 bullets per slide.
+- Each bullet should be max 15 words.
+- Think of it as "tech Twitter meets a magazine" -- sharp, opinionated, easy to scan.
+- Use strong verbs and concrete numbers where possible.
+
+NEWS CONTENT:
 ${newsContext}
 
-Return JSON only with:
-title
-summary
-hashtags
-slides`,
+Return a JSON response with this exact structure (no markdown, pure JSON):
+{
+  "title": "Catchy post title without emojis",
+  "summary": "Engaging 2-3 sentence caption that hooks readers. No emojis. Write like you're texting a tech-savvy friend.",
+  "hashtags": ["ai", "machinelearning", "tech", "aiupdate"],
+  "slides": [
+    {
+      "type": "cover",
+      "headline": "AI Updates",
+      "subheadline": "March 8, 2026",
+      "accent_color": "#6366f1"
+    },
+    {
+      "type": "news",
+      "headline": "Catchy headline here",
+      "bullets": ["Short punchy point 1", "Point 2 with a number", "Why this matters in one line"],
+      "source": "Source name",
+      "accent_color": "#06b6d4"
+    },
+    {
+      "type": "cta",
+      "headline": "Stay Updated",
+      "subheadline": "Follow for daily AI news",
+      "accent_color": "#22c55e"
+    }
+  ]
+}
+
+Create 4-8 slides. First slide is always cover, last is always CTA. Middle slides are news items. Max 4 bullet points per news slide. No emojis anywhere.`,
           },
         ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "create_carousel_post",
+              description: "Create a carousel post with slides",
+              parameters: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  summary: { type: "string" },
+                  hashtags: { type: "array", items: { type: "string" } },
+                  slides: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        type: { type: "string", enum: ["cover", "news", "cta"] },
+                        headline: { type: "string" },
+                        subheadline: { type: "string" },
+                        bullets: { type: "array", items: { type: "string" } },
+                        source: { type: "string" },
+                        accent_color: { type: "string" },
+                      },
+                      required: ["type", "headline"],
+                    },
+                  },
+                },
+                required: ["title", "summary", "hashtags", "slides"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "create_carousel_post" } },
       }),
     });
 
     if (!aiResp.ok) {
-      throw new Error(await aiResp.text());
+      if (aiResp.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResp.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const errText = await aiResp.text();
+      throw new Error(`AI gateway error ${aiResp.status}: ${errText}`);
     }
 
     const aiData = await aiResp.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    let postContent;
 
-    const content = aiData.choices?.[0]?.message?.content || "";
+    if (toolCall?.function?.arguments) {
+      postContent = JSON.parse(toolCall.function.arguments);
+    } else {
+      const content = aiData.choices?.[0]?.message?.content || "";
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        postContent = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("Failed to parse AI response");
+      }
+    }
 
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    // Step 3: Try to find relevant images for ALL slides using Firecrawl search
+    for (const slide of postContent.slides) {
+      const searchQuery =
+        slide.type === "cover"
+          ? `AI artificial intelligence technology futuristic 2026`
+          : slide.type === "cta"
+            ? `AI community technology network abstract`
+            : `${slide.headline} AI technology`;
 
-    if (!jsonMatch) throw new Error("AI JSON parse failed");
+      try {
+        const imgSearch = await fetch("https://api.firecrawl.dev/v1/search", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: searchQuery,
+            limit: 3,
+            scrapeOptions: { formats: ["links"] },
+          }),
+        });
+        const imgData = await imgSearch.json();
+        for (const result of imgData.data || []) {
+          if (result?.metadata?.ogImage) {
+            slide.image_url = result.metadata.ogImage;
+            break;
+          }
+        }
+      } catch {
+        // Skip image search errors silently
+      }
+    }
 
-    const postContent = JSON.parse(jsonMatch[0]);
-
-    const { data: post, error } = await supabase
+    // Step 4: Save the post
+    const { data: post, error: insertError } = await supabase
       .from("ai_posts")
       .insert({
         user_id: user.id,
@@ -233,28 +313,16 @@ slides`,
       .select()
       .single();
 
-    if (error) throw error;
+    if (insertError) throw insertError;
 
     return new Response(JSON.stringify({ success: true, post }), {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    console.error(e);
-
-    return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    console.error("generate-ai-post error:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
