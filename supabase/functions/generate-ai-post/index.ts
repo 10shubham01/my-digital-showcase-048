@@ -58,24 +58,27 @@ serve(async (req) => {
     const newsItems: string[] = [];
     const sourceUrls: string[] = [];
 
-    // Build queries from user's news_sources + generic fallbacks, then shuffle
-    const userSources: string[] = settings?.news_sources || [];
-    const siteQueries = userSources.map((domain: string) => `site:${domain} AI news`);
-    const genericQueries = [
-      "latest AI news today",
-      "new AI model released this week",
+    // Generic queries first (these actually work), then site-specific as bonus
+    const genericQueries = shuffle([
+      "latest AI news",
+      "new AI model released",
       "artificial intelligence breakthrough",
-      "AI startup funding news",
-      "machine learning research paper",
+      "AI startup funding",
+      "machine learning research",
       "AI agent tool launched",
-      "LLM benchmark results new",
+      "LLM benchmark results",
       "generative AI product update",
-    ];
+      "OpenAI Google Anthropic news",
+      "AI robotics automation news",
+    ]);
 
-    // Shuffle both and combine: site-specific first, then random generic
-    const allQueries = [...shuffle(siteQueries), ...shuffle(genericQueries)];
-    // Pick up to 5 queries to avoid excessive API calls
-    const selectedQueries = allQueries.slice(0, 5);
+    // Pick 4 generic queries (reliable) + 1 site query (bonus)
+    const userSources: string[] = settings?.news_sources || [];
+    const siteQueries = shuffle(userSources.map((domain: string) => `${domain} AI`));
+    const selectedQueries = [
+      ...genericQueries.slice(0, 4),
+      ...(siteQueries.length > 0 ? [siteQueries[0]] : [genericQueries[4]]),
+    ];
 
     for (const query of selectedQueries) {
       if (newsItems.length >= 8) break;
