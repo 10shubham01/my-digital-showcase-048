@@ -10,6 +10,7 @@ import AiSettingsPanel from "@/components/ai-updates/AiSettingsPanel";
 import GenerationProgress from "@/components/ai-updates/GenerationProgress";
 import ThemeToggle from "@/components/ThemeToggle";
 import Logo from "@/components/Logo";
+import TerminalLogin from "@/components/todo/TerminalLogin";
 import { toast } from "sonner";
 
 const Output = () => {
