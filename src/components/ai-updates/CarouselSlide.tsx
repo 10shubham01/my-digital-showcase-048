@@ -1,4 +1,5 @@
 import type { AiPostSlide } from "@/hooks/useAiPosts";
+import Logo from "@/components/Logo";
 
 interface CarouselSlideProps {
   slide: AiPostSlide;
@@ -30,7 +31,6 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
           border: `1px solid ${accent}44`,
         }}
       >
-        {/* Background image with heavy overlay for drama */}
         {slide.image_url && (
           <div className="absolute inset-0 z-0">
             <img src={slide.image_url} alt="" className="w-full h-full object-cover" />
@@ -45,13 +45,11 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
           }} />
         )}
 
-        {/* Accent top bar */}
         <div
           className="absolute top-0 left-0 w-full h-1 z-10"
           style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }}
         />
 
-        {/* Glowing orb decoration */}
         <div className="absolute top-6 right-6 z-10">
           <div className="w-8 h-8 rounded-full" style={{
             background: `radial-gradient(circle, ${accent}88, ${accent}22, transparent)`,
@@ -59,7 +57,6 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
           }} />
         </div>
 
-        {/* Content at bottom */}
         <div className="relative z-10 flex flex-col items-start w-full">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }} />
@@ -86,7 +83,6 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
           border: `1px solid ${accent}33`,
         }}
       >
-        {/* Background image with heavy overlay */}
         {slide.image_url && (
           <div className="absolute inset-0 z-0">
             <img src={slide.image_url} alt="" className="w-full h-full object-cover" />
@@ -97,11 +93,9 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
         )}
 
         <div className="relative z-10 flex flex-col items-center">
-          <div
-            className="w-14 h-14 rounded-full mb-5 flex items-center justify-center"
-            style={{ background: `${accent}22`, border: `2px solid ${accent}55`, boxShadow: `0 0 40px ${accent}22` }}
-          >
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 12px ${accent}` }} />
+          {/* Logo instead of generic orb */}
+          <div className="mb-5">
+            <Logo className="w-16 h-16" />
           </div>
           <h2 className="text-xl font-bold text-center">{slide.headline}</h2>
           {slide.subheadline && (

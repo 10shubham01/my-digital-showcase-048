@@ -46,22 +46,25 @@ const AutoGrow = ({
 
 /* ── Image Search Popover ── */
 const ImageSearchPopover = ({
-  onSelect, onClose, loading, images, onSearch,
+  onSelect, onClose, loading, images, onSearch, defaultQuery,
 }: {
   onSelect: (url: string) => void;
   onClose: () => void;
   loading: boolean;
   images: { url: string; title: string }[];
   onSearch: (q: string) => void;
+  defaultQuery?: string;
 }) => {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(defaultQuery || "");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 4, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 4, scale: 0.97 }}
       className="absolute z-30 top-full mt-2 left-0 right-0 bg-popover border border-border rounded-xl shadow-xl p-3 space-y-2"
-      style={{ maxHeight: 360, overflowY: "auto" }}
+      style={{ maxHeight: 420, overflowY: "auto" }}
     >
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Search Images</p>
       <div className="flex gap-2">
@@ -82,17 +85,36 @@ const ImageSearchPopover = ({
           {loading ? "Searching..." : "Search"}
         </button>
       </div>
-      {images.length > 0 && (
+
+      {/* Preview selected image */}
+      {previewUrl && (
+        <div className="space-y-2 border border-primary/30 rounded-lg p-2">
+          <p className="text-[10px] text-primary font-medium">Preview</p>
+          <img src={previewUrl} alt="" className="w-full h-32 object-cover rounded-lg" />
+          <div className="flex gap-2">
+            <button onClick={() => onSelect(previewUrl)}
+              className="flex-1 px-3 py-1.5 text-[10px] rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90">
+              Use This Image
+            </button>
+            <button onClick={() => setPreviewUrl(null)}
+              className="px-3 py-1.5 text-[10px] rounded-lg bg-muted text-muted-foreground hover:text-foreground">
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+
+      {images.length > 0 && !previewUrl && (
         <div className="grid grid-cols-2 gap-2 mt-2">
           {images.map((img, i) => (
             <button
               key={i}
-              onClick={() => onSelect(img.url)}
+              onClick={() => setPreviewUrl(img.url)}
               className="relative rounded-lg overflow-hidden group h-20 border border-border/30 hover:border-primary/50 transition-colors"
             >
               <img src={img.url} alt={img.title} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = "none"; }} />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <span className="text-white text-[9px] font-medium">Use this</span>
+                <span className="text-white text-[9px] font-medium">Preview</span>
               </div>
             </button>
           ))}
@@ -118,6 +140,7 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
   const [showImageSearch, setShowImageSearch] = useState(false);
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
   const [imageSearchResults, setImageSearchResults] = useState<{ url: string; title: string }[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const updatePost = useUpdateAiPost();
   const slideRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -228,11 +251,20 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
     }
   };
 
-  /* ── Firecrawl Image Search ── */
+  /* ── Firecrawl Image Search — passes post context ── */
+  const getPostContext = () => {
+    const parts = [title];
+    if (summary) parts.push(summary);
+    if (currentSlide?.headline) parts.push(currentSlide.headline);
+    return parts.join(" ").slice(0, 200);
+  };
+
   const handleImageSearch = async (query: string) => {
     setImageSearchLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-slide-image", { body: { query } });
+      const { data, error } = await supabase.functions.invoke("generate-slide-image", {
+        body: { query, context: getPostContext() },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setImageSearchResults(data?.images || []);
@@ -251,22 +283,47 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
     toast.success("Image updated!");
   };
 
-  /* ── File upload — use object URL, no base64 ── */
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /* ── File upload — uploads to cloud storage ── */
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    updateSlide("image_url", objectUrl);
-    toast.success("Image replaced!");
     e.target.value = "";
+
+    setUploadingImage(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `${post.id}/${Date.now()}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("slide-images")
+        .upload(path, file, { contentType: file.type, upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("slide-images")
+        .getPublicUrl(path);
+
+      updateSlide("image_url", publicUrl);
+      toast.success("Image uploaded & saved!");
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+      // Fallback to object URL
+      const objectUrl = URL.createObjectURL(file);
+      updateSlide("image_url", objectUrl);
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const getImageLabel = (url: string) => {
     if (!url) return "";
     if (url.startsWith("data:image")) return "Embedded image";
-    if (url.startsWith("blob:")) return "Uploaded image";
+    if (url.startsWith("blob:")) return "Uploaded image (unsaved)";
     try { return new URL(url).hostname; } catch { return "Image"; }
   };
+
+  const defaultSearchQuery = currentSlide?.headline || title || "";
 
   return (
     <>
@@ -420,6 +477,11 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
                       <div className="relative rounded-lg overflow-hidden group">
                         <img src={currentSlide.image_url} alt="" className="w-full h-24 object-cover rounded-lg"
                           onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                        {uploadingImage && (
+                          <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                            <Loader2 className="w-5 h-5 text-white animate-spin" />
+                          </div>
+                        )}
                         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                           <button onClick={() => { setShowImageSearch(true); setImageSearchResults([]); }}
                             className="p-2 rounded-lg bg-white/20 text-white text-[10px] flex items-center gap-1 hover:bg-white/30">
@@ -450,7 +512,7 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
                     </div>
                   )}
 
-                  {/* Paste URL — hide raw base64/blob */}
+                  {/* Paste URL */}
                   <input
                     value={currentSlide.image_url?.startsWith("data:") || currentSlide.image_url?.startsWith("blob:") ? "" : (currentSlide.image_url || "")}
                     onChange={(e) => updateSlide("image_url", e.target.value)}
@@ -468,6 +530,7 @@ const PostEditor = ({ post, onClose }: PostEditorProps) => {
                         onSearch={handleImageSearch}
                         onSelect={handleSelectImage}
                         onClose={() => setShowImageSearch(false)}
+                        defaultQuery={defaultSearchQuery}
                       />
                     )}
                   </AnimatePresence>

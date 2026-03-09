@@ -9,6 +9,7 @@ import { toast } from "sonner";
 interface PostCardProps {
   post: AiPost;
   onEdit: (post: AiPost) => void;
+  onPreview?: (post: AiPost) => void;
   layout?: "grid" | "list";
 }
 
@@ -19,23 +20,26 @@ const statusColors: Record<string, string> = {
   draft: "#6366f1",
 };
 
-const PostCard = ({ post, onEdit, layout = "grid" }: PostCardProps) => {
+const PostCard = ({ post, onEdit, onPreview, layout = "grid" }: PostCardProps) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const updatePost = useUpdateAiPost();
   const deletePost = useDeleteAiPost();
   const slides = (post.slides || []) as any[];
 
-  const handleApprove = () => {
+  const handleApprove = (e: React.MouseEvent) => {
+    e.stopPropagation();
     updatePost.mutate({ id: post.id, status: "approved" } as any);
     toast.success("Post approved!");
   };
 
-  const handleReject = () => {
+  const handleReject = (e: React.MouseEvent) => {
+    e.stopPropagation();
     updatePost.mutate({ id: post.id, status: "rejected" } as any);
     toast.info("Post rejected");
   };
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     deletePost.mutate(post.id);
     toast.success("Post deleted");
   };
@@ -46,7 +50,8 @@ const PostCard = ({ post, onEdit, layout = "grid" }: PostCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="group bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/30 transition-all duration-300"
+      onClick={() => onPreview?.(post)}
+      className="group bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/30 transition-all duration-300 cursor-pointer"
     >
       {/* Slide preview */}
       <div className="relative bg-black flex items-center justify-center p-4">
@@ -58,14 +63,14 @@ const PostCard = ({ post, onEdit, layout = "grid" }: PostCardProps) => {
         {slides.length > 1 && (
           <>
             <button
-              onClick={() => setCurrentSlide((p) => Math.max(0, p - 1))}
+              onClick={(e) => { e.stopPropagation(); setCurrentSlide((p) => Math.max(0, p - 1)); }}
               className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               disabled={currentSlide === 0}
             >
               <ChevronLeft className="w-4 h-4 text-white" />
             </button>
             <button
-              onClick={() => setCurrentSlide((p) => Math.min(slides.length - 1, p + 1))}
+              onClick={(e) => { e.stopPropagation(); setCurrentSlide((p) => Math.min(slides.length - 1, p + 1)); }}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               disabled={currentSlide === slides.length - 1}
             >
@@ -124,7 +129,7 @@ const PostCard = ({ post, onEdit, layout = "grid" }: PostCardProps) => {
               <Check className="w-3.5 h-3.5" /> Approve
             </button>
             <button
-              onClick={() => onEdit(post)}
+              onClick={(e) => { e.stopPropagation(); onEdit(post); }}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" /> Edit
@@ -141,7 +146,7 @@ const PostCard = ({ post, onEdit, layout = "grid" }: PostCardProps) => {
         {post.status !== "pending" && (
           <div className="flex gap-2 pt-1">
             <button
-              onClick={() => onEdit(post)}
+              onClick={(e) => { e.stopPropagation(); onEdit(post); }}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-muted text-xs font-medium hover:bg-muted/80 transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" /> View/Edit
