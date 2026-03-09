@@ -39,44 +39,36 @@ serve(async (req) => {
     const sourceUrls: string[] = [];
 
     const searchQueries = [
-      "latest AI model release 2026",
-      "new AI agent launched",
-      "AI ML breakthrough news",
+      "latest AI news",
+      "new AI model released",
+      "artificial intelligence breakthrough",
     ];
 
-    // Try progressively wider time windows: day -> week -> month
-    const timeFilters = ["qdr:d", "qdr:w", "qdr:m"];
-
-    for (const tbs of timeFilters) {
-      if (newsItems.length >= 3) break; // enough news found
-
-      for (const query of searchQueries) {
-        if (newsItems.length >= 8) break;
-        try {
-          const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              query,
-              limit: 5,
-              tbs,
-              scrapeOptions: { formats: ["markdown"] },
-            }),
-          });
-          const searchData = await searchResp.json();
-          console.log(`Search "${query}" (${tbs}): ${searchData.data?.length || 0} results`);
-          if (searchData.data) {
-            for (const item of searchData.data) {
-              if (item.markdown) newsItems.push(item.markdown.slice(0, 2000));
-              if (item.url) sourceUrls.push(item.url);
-            }
+    for (const query of searchQueries) {
+      if (newsItems.length >= 8) break;
+      try {
+        const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query,
+            limit: 5,
+            scrapeOptions: { formats: ["markdown"] },
+          }),
+        });
+        const searchData = await searchResp.json();
+        console.log(`Search "${query}": status=${searchResp.status}, results=${searchData.data?.length || 0}, keys=${Object.keys(searchData)}`);
+        if (searchData.data) {
+          for (const item of searchData.data) {
+            if (item.markdown) newsItems.push(item.markdown.slice(0, 2000));
+            if (item.url) sourceUrls.push(item.url);
           }
-        } catch (e) {
-          console.error("Search error:", e);
         }
+      } catch (e) {
+        console.error("Search error:", e);
       }
     }
 
