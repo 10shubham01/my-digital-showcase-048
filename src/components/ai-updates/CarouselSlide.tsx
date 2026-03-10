@@ -7,6 +7,8 @@ interface CarouselSlideProps {
   total: number;
 }
 
+const fontFamily = "'Montserrat Alternates', sans-serif";
+
 const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
   const accent = slide.accent_color || "#6366f1";
 
@@ -27,6 +29,7 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
       <div
         className="w-[340px] h-[340px] rounded-2xl relative overflow-hidden flex flex-col items-center justify-end p-8 pb-10 text-white"
         style={{
+          fontFamily,
           background: `linear-gradient(135deg, ${accent}33 0%, #0a0a0a 60%, ${accent}15 100%)`,
           border: `1px solid ${accent}44`,
         }}
@@ -62,7 +65,7 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }} />
             <span className="text-[10px] uppercase tracking-[0.25em] opacity-70 font-medium">justoutput</span>
           </div>
-          <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-left" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
+          <h1 className="text-[22px] font-extrabold leading-tight tracking-tight text-left">
             {slide.headline}
           </h1>
           {slide.subheadline && (
@@ -79,6 +82,7 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
       <div
         className="w-[340px] h-[340px] rounded-2xl relative overflow-hidden flex flex-col items-center justify-center p-8 text-white"
         style={{
+          fontFamily,
           background: `linear-gradient(135deg, ${accent}22 0%, #0a0a0a 50%, ${accent}11 100%)`,
           border: `1px solid ${accent}33`,
         }}
@@ -93,7 +97,6 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
         )}
 
         <div className="relative z-10 flex flex-col items-center">
-          {/* Logo instead of generic orb */}
           <div className="mb-5">
             <Logo className="w-16 h-16" />
           </div>
@@ -122,6 +125,7 @@ const CarouselSlide = ({ slide, index, total }: CarouselSlideProps) => {
     <div
       className="w-[340px] h-[340px] rounded-2xl relative overflow-hidden flex flex-col text-white"
       style={{
+        fontFamily,
         background: `linear-gradient(160deg, ${accent}15 0%, #0a0a0a 40%, #0a0a0a 100%)`,
         border: `1px solid ${accent}22`,
       }}
