@@ -12,6 +12,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import TerminalLogin from "@/components/todo/TerminalLogin";
 import { toast } from "sonner";
 
+const fontFamily = "'Montserrat Alternates', sans-serif";
+
 const Output = () => {
   const { session, loading: authLoading, signIn, signUp, signOut } = useTodoAuth();
   const { data: settings, isLoading: settingsLoading } = useAiSettings();
@@ -35,7 +37,7 @@ const Output = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily }}>
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     );
@@ -47,7 +49,7 @@ const Output = () => {
 
   if (!settingsLoading && !isAllowed) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
+      <div className="min-h-screen bg-background flex items-center justify-center" style={{ fontFamily }}>
         <div className="text-center space-y-3">
           <p className="text-lg font-semibold">Access Denied</p>
           <p className="text-sm text-muted-foreground">This page is restricted.</p>
@@ -75,7 +77,7 @@ const Output = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background" style={{ fontFamily: "'Montserrat Alternates', sans-serif" }}>
+    <div className="min-h-screen bg-background" style={{ fontFamily }}>
       {/* Subtle grid background */}
       <div className="fixed inset-0 bg-grid opacity-40 pointer-events-none" />
 
