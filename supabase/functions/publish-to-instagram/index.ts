@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.97.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -13,11 +15,24 @@ serve(async (req) => {
     const INSTAGRAM_ACCOUNT_ID = Deno.env.get("INSTAGRAM_ACCOUNT_ID");
 
     if (!INSTAGRAM_ACCESS_TOKEN) {
-      throw new Error("INSTAGRAM_ACCESS_TOKEN not configured. Please add your Instagram access token in settings.");
+      throw new Error("Instagram Access Token not configured. Go to Settings to add it.");
     }
     if (!INSTAGRAM_ACCOUNT_ID) {
-      throw new Error("INSTAGRAM_ACCOUNT_ID not configured. Please add your Instagram Business Account ID in settings.");
+      throw new Error("Instagram Account ID not configured. Go to Settings to add it.");
     }
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header");
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw new Error("Unauthorized");
 
     const { post_id, caption, image_data } = await req.json();
 
@@ -25,40 +40,70 @@ serve(async (req) => {
       throw new Error("No images provided");
     }
 
-    const graphUrl = `https://graph.facebook.com/v19.0/${INSTAGRAM_ACCOUNT_ID}`;
+    console.log(`Publishing ${image_data.length} images to Instagram...`);
 
-    if (image_data.length === 1) {
-      // Single image post
-      // Instagram requires a publicly accessible URL, so we need to upload first
-      // For now, we'll use the image_url approach - user needs to host images
-      throw new Error("Single image posts require publicly hosted image URLs. Use carousel for multiple slides.");
-    }
+    // Upload base64 images to public storage and get URLs
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+    const publicUrls: string[] = [];
 
-    // Carousel post flow:
-    // Step 1: Create container items for each image
-    // Note: Instagram Graph API requires publicly accessible image URLs
-    // The client sends base64 data, but Instagram needs URLs
-    // This is a limitation - images need to be uploaded to a public hosting first
-
-    // For now, return instructions about the requirement
-    // In production, you'd upload to Supabase Storage (public bucket) first
-
-    // Check if images are URLs or base64
-    const imageUrls: string[] = [];
-    for (const img of image_data) {
+    for (let i = 0; i < image_data.length; i++) {
+      const img = image_data[i];
       if (img.startsWith("http")) {
-        imageUrls.push(img);
+        publicUrls.push(img);
       } else {
-        // Base64 images need to be uploaded to public storage first
-        throw new Error(
-          "Instagram requires publicly accessible image URLs. Please export slides as images and upload them to a public hosting service, or configure Supabase Storage with a public bucket for auto-upload."
-        );
+        // Upload base64 to storage
+        const base64Data = img.replace(/^data:image\/\w+;base64,/, "");
+        const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+        const fileName = `instagram/${user.id}/${Date.now()}-${i}.png`;
+
+        const { error: uploadErr } = await serviceClient.storage
+          .from("slide-images")
+          .upload(fileName, binaryData, { contentType: "image/png", upsert: true });
+
+        if (uploadErr) throw new Error(`Failed to upload image ${i + 1}: ${uploadErr.message}`);
+
+        const { data: urlData } = serviceClient.storage.from("slide-images").getPublicUrl(fileName);
+        publicUrls.push(urlData.publicUrl);
+        console.log(`Uploaded image ${i + 1} to storage`);
       }
     }
 
-    // Step 1: Create individual media containers
+    const graphUrl = `https://graph.facebook.com/v19.0/${INSTAGRAM_ACCOUNT_ID}`;
+
+    if (publicUrls.length === 1) {
+      // Single image post
+      const createResp = await fetch(`${graphUrl}/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_url: publicUrls[0],
+          caption,
+          access_token: INSTAGRAM_ACCESS_TOKEN,
+        }),
+      });
+      const createData = await createResp.json();
+      if (createData.error) throw new Error(`Instagram: ${createData.error.message}`);
+
+      const publishResp = await fetch(`${graphUrl}/media_publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creation_id: createData.id,
+          access_token: INSTAGRAM_ACCESS_TOKEN,
+        }),
+      });
+      const publishData = await publishResp.json();
+      if (publishData.error) throw new Error(`Instagram: ${publishData.error.message}`);
+
+      return new Response(
+        JSON.stringify({ success: true, instagram_media_id: publishData.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Carousel post
     const containerIds: string[] = [];
-    for (const imageUrl of imageUrls) {
+    for (const imageUrl of publicUrls) {
       const resp = await fetch(`${graphUrl}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,11 +114,10 @@ serve(async (req) => {
         }),
       });
       const data = await resp.json();
-      if (data.error) throw new Error(`Instagram API: ${data.error.message}`);
+      if (data.error) throw new Error(`Instagram: ${data.error.message}`);
       containerIds.push(data.id);
     }
 
-    // Step 2: Create carousel container
     const carouselResp = await fetch(`${graphUrl}/media`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -85,9 +129,8 @@ serve(async (req) => {
       }),
     });
     const carouselData = await carouselResp.json();
-    if (carouselData.error) throw new Error(`Instagram API: ${carouselData.error.message}`);
+    if (carouselData.error) throw new Error(`Instagram: ${carouselData.error.message}`);
 
-    // Step 3: Publish
     const publishResp = await fetch(`${graphUrl}/media_publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -97,7 +140,9 @@ serve(async (req) => {
       }),
     });
     const publishData = await publishResp.json();
-    if (publishData.error) throw new Error(`Instagram API: ${publishData.error.message}`);
+    if (publishData.error) throw new Error(`Instagram: ${publishData.error.message}`);
+
+    console.log("Published to Instagram:", publishData.id);
 
     return new Response(
       JSON.stringify({ success: true, instagram_media_id: publishData.id }),

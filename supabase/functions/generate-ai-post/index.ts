@@ -16,6 +16,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -23,7 +24,6 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    // Fetch settings + recent posts in parallel
     const [settingsRes, recentPostsRes] = await Promise.all([
       supabase.from("ai_settings").select("*").eq("user_id", user.id).single(),
       supabase.from("ai_posts").select("title").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20),
@@ -44,7 +44,7 @@ serve(async (req) => {
     });
 
     // Step 1: Generate post content
-    console.log("Generating post content with model:", model);
+    console.log("[STEP 1] Generating post content with model:", model);
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -59,11 +59,11 @@ serve(async (req) => {
             role: "user",
             content: `Today is ${today}. You are an AI news expert with deep knowledge of the latest developments in AI, machine learning, and technology.
 
-Generate a NEW and UNIQUE Instagram carousel post about the LATEST AI/tech news and developments. Use your knowledge of recent events, model releases, research breakthroughs, startup news, and industry trends.
+Generate a NEW and UNIQUE Instagram carousel post about the LATEST AI/tech news and developments.
 
 IMPORTANT - AVOID REPEATING these recent topics I already covered: ${recentTitles || "none yet"}
 
-Pick 3-5 DIFFERENT and FRESH news items or developments to cover. Be specific with names, companies, dates, and numbers.
+Pick 3-5 DIFFERENT and FRESH news items. Be specific with names, companies, dates, and numbers.
 
 RULES:
 - No emojis anywhere
@@ -71,35 +71,35 @@ RULES:
 - Catchy headlines that drive curiosity
 - Max 3-4 bullet points per slide, each max 15 words
 - Use strong verbs and concrete numbers
-- For each news slide, include an "image_prompt" field describing a relevant tech/AI visual for that slide (abstract, futuristic, no text in images)
+- For each slide, include an "image_search" field with 2-3 keywords for finding a relevant stock photo (e.g. "artificial intelligence robot", "neural network visualization", "tech startup office")
 
 Return ONLY valid JSON (no markdown wrapping) with this structure:
 {
   "title": "Catchy post title without emojis",
   "summary": "Engaging 2-3 sentence caption. No emojis.",
-  "hashtags": ["ai", "machinelearning", "tech", "aiupdate"],
+  "hashtags": ["ai", "machinelearning", "tech"],
   "slides": [
     {
       "type": "cover",
       "headline": "AI Updates",
       "subheadline": "${today}",
       "accent_color": "#6366f1",
-      "image_prompt": "Abstract futuristic AI neural network glowing nodes dark background"
+      "image_search": "futuristic artificial intelligence"
     },
     {
       "type": "news",
       "headline": "Catchy headline here",
-      "bullets": ["Short punchy point 1", "Point 2 with a number", "Why this matters"],
+      "bullets": ["Point 1", "Point 2", "Point 3"],
       "source": "Source name",
       "accent_color": "#06b6d4",
-      "image_prompt": "AI robot arm assembling circuits dark moody lighting"
+      "image_search": "machine learning data"
     },
     {
       "type": "cta",
       "headline": "Stay Updated",
       "subheadline": "Follow for daily AI news",
       "accent_color": "#22c55e",
-      "image_prompt": "Abstract technology network connections glowing green"
+      "image_search": "technology network"
     }
   ]
 }
@@ -130,7 +130,7 @@ Create 5-8 slides. First is cover, last is CTA. Middle slides are news.`,
                         bullets: { type: "array", items: { type: "string" } },
                         source: { type: "string" },
                         accent_color: { type: "string" },
-                        image_prompt: { type: "string" },
+                        image_search: { type: "string" },
                       },
                       required: ["type", "headline"],
                     },
@@ -147,26 +147,21 @@ Create 5-8 slides. First is cover, last is CTA. Middle slides are news.`,
     });
 
     if (!aiResp.ok) {
+      const errText = await aiResp.text();
+      console.error("AI gateway error:", aiResp.status, errText);
       if (aiResp.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errText = await aiResp.text();
-      console.error("AI gateway error:", aiResp.status, errText);
-      throw new Error(`AI gateway error ${aiResp.status}: ${errText}`);
+      throw new Error(`AI gateway error ${aiResp.status}`);
     }
 
     const aiData = await aiResp.json();
-    console.log("AI response received, finish_reason:", aiData.choices?.[0]?.finish_reason);
+    console.log("[STEP 1] AI response received, finish_reason:", aiData.choices?.[0]?.finish_reason);
 
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    let postContent;
+    let postContent: any;
 
     if (toolCall?.function?.arguments) {
       postContent = JSON.parse(toolCall.function.arguments);
@@ -176,17 +171,20 @@ Create 5-8 slides. First is cover, last is CTA. Middle slides are news.`,
       if (jsonMatch) {
         postContent = JSON.parse(jsonMatch[0]);
       } else {
-        console.error("Could not parse AI response:", content.slice(0, 500));
         throw new Error("Failed to parse AI response");
       }
     }
 
-    // Step 2: Generate images for slides using AI image model
-    console.log("Generating images for", postContent.slides.length, "slides");
-    const imageModel = "google/gemini-3.1-flash-image-preview";
+    // Step 2: Generate images for each slide using AI image generation
+    console.log("[STEP 2] Generating images for", postContent.slides.length, "slides");
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+    const imageModel = "google/gemini-2.5-flash-image";
 
-    for (const slide of postContent.slides) {
-      const prompt = slide.image_prompt || `Abstract futuristic AI technology ${slide.headline}`;
+    for (let idx = 0; idx < postContent.slides.length; idx++) {
+      const slide = postContent.slides[idx];
+      const searchTerms = slide.image_search || slide.headline || "technology";
+      console.log(`[STEP 2] Generating image ${idx + 1}/${postContent.slides.length}: "${searchTerms}"`);
+
       try {
         const imgResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -199,47 +197,53 @@ Create 5-8 slides. First is cover, last is CTA. Middle slides are news.`,
             messages: [
               {
                 role: "user",
-                content: `Generate a visually stunning, dark-themed abstract image for an Instagram carousel slide. The image should be moody, cinematic, with deep blacks and subtle color accents. Style: editorial tech magazine. Prompt: ${prompt}. No text, no words, no letters in the image.`,
+                content: `Generate a visually stunning, cinematic photograph-style image. Dark moody tones with subtle color accents. Subject: ${searchTerms}. Style: editorial tech magazine cover art. Abstract and artistic. Absolutely NO text, NO words, NO letters, NO numbers in the image.`,
               },
             ],
             modalities: ["image", "text"],
           }),
         });
 
+        console.log(`[STEP 2] Image API response status: ${imgResp.status}`);
+
         if (imgResp.ok) {
           const imgData = await imgResp.json();
           const imageUrl = imgData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-          if (imageUrl) {
-            // Upload to storage
+
+          if (imageUrl && imageUrl.startsWith("data:image")) {
+            console.log(`[STEP 2] Got base64 image, uploading to storage...`);
             const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
             const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
-            const fileName = `${user.id}/${Date.now()}-slide-${postContent.slides.indexOf(slide)}.png`;
+            const fileName = `${user.id}/${Date.now()}-slide-${idx}.png`;
 
-            const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
             const { error: uploadErr } = await serviceClient.storage
               .from("slide-images")
-              .upload(fileName, binaryData, { contentType: "image/png" });
+              .upload(fileName, binaryData, { contentType: "image/png", upsert: true });
 
             if (!uploadErr) {
               const { data: urlData } = serviceClient.storage.from("slide-images").getPublicUrl(fileName);
               slide.image_url = urlData.publicUrl;
-              console.log("Image uploaded for slide:", slide.type);
+              console.log(`[STEP 2] Image ${idx + 1} uploaded successfully`);
             } else {
-              console.error("Upload error:", uploadErr.message);
+              console.error(`[STEP 2] Upload error for slide ${idx + 1}:`, uploadErr.message);
             }
+          } else {
+            console.log(`[STEP 2] No valid base64 image in response for slide ${idx + 1}`);
           }
         } else {
-          console.error("Image gen error:", imgResp.status);
+          const errBody = await imgResp.text();
+          console.error(`[STEP 2] Image gen failed for slide ${idx + 1}: ${imgResp.status} - ${errBody.slice(0, 200)}`);
         }
       } catch (imgErr) {
-        console.error("Image generation failed for slide:", imgErr);
+        console.error(`[STEP 2] Image generation exception for slide ${idx + 1}:`, imgErr);
       }
 
-      // Remove the prompt field from final data
-      delete slide.image_prompt;
+      // Clean up the search field
+      delete slide.image_search;
     }
 
     // Step 3: Save the post
+    console.log("[STEP 3] Saving post...");
     const { data: post, error: insertError } = await supabase
       .from("ai_posts")
       .insert({
@@ -256,7 +260,8 @@ Create 5-8 slides. First is cover, last is CTA. Middle slides are news.`,
 
     if (insertError) throw insertError;
 
-    console.log("Post created successfully:", post.id);
+    const imageCount = postContent.slides.filter((s: any) => s.image_url).length;
+    console.log(`[STEP 3] Post created: ${post.id} with ${imageCount}/${postContent.slides.length} images`);
 
     return new Response(JSON.stringify({ success: true, post }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
