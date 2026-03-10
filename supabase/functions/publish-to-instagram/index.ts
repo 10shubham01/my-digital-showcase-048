@@ -11,16 +11,6 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const INSTAGRAM_ACCESS_TOKEN = Deno.env.get("INSTAGRAM_ACCESS_TOKEN");
-    const INSTAGRAM_ACCOUNT_ID = Deno.env.get("INSTAGRAM_ACCOUNT_ID");
-
-    if (!INSTAGRAM_ACCESS_TOKEN) {
-      throw new Error("Instagram Access Token not configured. Go to Settings to add it.");
-    }
-    if (!INSTAGRAM_ACCOUNT_ID) {
-      throw new Error("Instagram Account ID not configured. Go to Settings to add it.");
-    }
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
@@ -33,6 +23,27 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
+
+    // Get Instagram config from database
+    const { data: igConfig, error: configError } = await supabase
+      .from("instagram_config")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
+    if (configError || !igConfig) {
+      throw new Error("Instagram not configured. Go to Settings to add your credentials.");
+    }
+
+    const INSTAGRAM_ACCESS_TOKEN = igConfig.access_token;
+    const INSTAGRAM_ACCOUNT_ID = igConfig.account_id;
+
+    if (!INSTAGRAM_ACCESS_TOKEN) {
+      throw new Error("Instagram Access Token not set. Go to Settings to add it.");
+    }
+    if (!INSTAGRAM_ACCOUNT_ID) {
+      throw new Error("Instagram Account ID not set. Go to Settings to add it.");
+    }
 
     const { post_id, caption, image_data } = await req.json();
 
@@ -51,7 +62,6 @@ serve(async (req) => {
       if (img.startsWith("http")) {
         publicUrls.push(img);
       } else {
-        // Upload base64 to storage
         const base64Data = img.replace(/^data:image\/\w+;base64,/, "");
         const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
         const fileName = `instagram/${user.id}/${Date.now()}-${i}.png`;
@@ -71,7 +81,6 @@ serve(async (req) => {
     const graphUrl = `https://graph.facebook.com/v19.0/${INSTAGRAM_ACCOUNT_ID}`;
 
     if (publicUrls.length === 1) {
-      // Single image post
       const createResp = await fetch(`${graphUrl}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
