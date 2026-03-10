@@ -7,15 +7,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Shuffle array in place
-function shuffle<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -29,112 +20,36 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    // Fetch settings + recent posts in parallel
-    const [settingsRes, recentPostsRes] = await Promise.all([
-      supabase.from("ai_settings").select("*").eq("user_id", user.id).single(),
-      supabase
-        .from("ai_posts")
-        .select("source_urls")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(10),
-    ]);
+    // Fetch settings
+    const { data: settings } = await supabase
+      .from("ai_settings")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
 
-    const settings = settingsRes.data;
-    const systemPrompt =
-      settings?.system_prompt ||
-      "You are a sharp, witty tech content creator making Instagram carousel posts about the latest AI/ML news. Your tone is conversational, punchy, and fun to read -- like explaining tech to a smart friend over coffee.";
-    const model = settings?.model || "google/gemini-2.5-flash";
+    const systemPrompt = settings?.system_prompt ||
+      "You are a sharp, witty tech content creator making Instagram carousel posts about the latest AI/ML news.";
+    const model = settings?.model || "google/gemini-3-flash-preview";
 
-    // Build set of previously used URLs for dedup
-    const usedUrls = new Set<string>();
-    for (const post of recentPostsRes.data || []) {
-      for (const url of post.source_urls || []) {
-        usedUrls.add(url);
-      }
-    }
-    console.log(`Dedup: ${usedUrls.size} URLs from last ${recentPostsRes.data?.length || 0} posts`);
+    // Fetch recent post titles for dedup
+    const { data: recentPosts } = await supabase
+      .from("ai_posts")
+      .select("title")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
-    // Step 1: Scrape news
-    const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
-    if (!FIRECRAWL_API_KEY) throw new Error("FIRECRAWL_API_KEY not configured");
+    const recentTitles = (recentPosts || []).map((p: any) => p.title).join(", ");
 
-    const newsItems: string[] = [];
-    const sourceUrls: string[] = [];
-
-    // Generic queries first (these actually work), then site-specific as bonus
-    const genericQueries = shuffle([
-      "latest AI news",
-      "new AI model released",
-      "artificial intelligence breakthrough",
-      "AI startup funding",
-      "machine learning research",
-      "AI agent tool launched",
-      "LLM benchmark results",
-      "generative AI product update",
-      "OpenAI Google Anthropic news",
-      "AI robotics automation news",
-    ]);
-
-    // Pick 4 generic queries (reliable) + 1 site query (bonus)
-    const userSources: string[] = settings?.news_sources || [];
-    const siteQueries = shuffle(userSources.map((domain: string) => `${domain} AI`));
-    const selectedQueries = [
-      ...genericQueries.slice(0, 4),
-      ...(siteQueries.length > 0 ? [siteQueries[0]] : [genericQueries[4]]),
-    ];
-
-    for (const query of selectedQueries) {
-      if (newsItems.length >= 8) break;
-      try {
-        const searchResp = await fetch("https://api.firecrawl.dev/v1/search", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query,
-            limit: 5,
-            scrapeOptions: { formats: ["markdown"] },
-          }),
-        });
-        const searchData = await searchResp.json();
-        console.log(`Search "${query}": ${searchData.data?.length || 0} results`);
-        if (searchData.data) {
-          for (const item of searchData.data) {
-            // Skip already-used URLs
-            if (item.url && usedUrls.has(item.url)) {
-              console.log(`Skipping duplicate URL: ${item.url}`);
-              continue;
-            }
-            if (item.markdown) newsItems.push(item.markdown.slice(0, 2000));
-            if (item.url) sourceUrls.push(item.url);
-          }
-        }
-      } catch (e) {
-        console.error("Search error:", e);
-      }
-    }
-
-    if (newsItems.length === 0) {
-      return new Response(JSON.stringify({ error: "No new/unique news found. Try again later." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Step 2: Generate post with Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const newsContext = newsItems.slice(0, 8).join("\n\n---\n\n");
+    const today = new Date().toLocaleDateString("en-US", {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -148,36 +63,37 @@ serve(async (req) => {
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Based on the following AI/tech news scraped today, create an Instagram carousel post.
+            content: `Today is ${today}. You are an AI news expert with deep knowledge of the latest developments in AI, machine learning, and technology.
 
-IMPORTANT RULES:
-- Do NOT use any emojis anywhere in the content. Zero emojis.
-- Write in a punchy, conversational tone. Short sentences. Active voice.
-- Make headlines catchy and curiosity-driven (like "This changes everything" or "Here's what nobody's talking about")
-- Bullet points should be concise insights, not boring summaries. Max 3-4 bullets per slide.
-- Each bullet should be max 15 words.
-- Think of it as "tech Twitter meets a magazine" -- sharp, opinionated, easy to scan.
-- Use strong verbs and concrete numbers where possible.
+Generate a NEW and UNIQUE Instagram carousel post about the LATEST AI/tech news and developments. Use your knowledge of recent events, model releases, research breakthroughs, startup news, and industry trends.
 
-NEWS CONTENT:
-${newsContext}
+IMPORTANT - AVOID REPEATING these recent topics I already covered: ${recentTitles || "none yet"}
 
-Return a JSON response with this exact structure (no markdown, pure JSON):
+Pick 3-5 DIFFERENT and FRESH news items or developments to cover. Be specific with names, companies, dates, and numbers.
+
+RULES:
+- No emojis anywhere
+- Punchy, conversational tone. Short sentences. Active voice.
+- Catchy headlines that drive curiosity
+- Max 3-4 bullet points per slide, each max 15 words
+- Use strong verbs and concrete numbers
+
+Return ONLY valid JSON (no markdown wrapping) with this structure:
 {
   "title": "Catchy post title without emojis",
-  "summary": "Engaging 2-3 sentence caption that hooks readers. No emojis. Write like you're texting a tech-savvy friend.",
+  "summary": "Engaging 2-3 sentence caption. No emojis.",
   "hashtags": ["ai", "machinelearning", "tech", "aiupdate"],
   "slides": [
     {
       "type": "cover",
       "headline": "AI Updates",
-      "subheadline": "March 8, 2026",
+      "subheadline": "${today}",
       "accent_color": "#6366f1"
     },
     {
       "type": "news",
       "headline": "Catchy headline here",
-      "bullets": ["Short punchy point 1", "Point 2 with a number", "Why this matters in one line"],
+      "bullets": ["Short punchy point 1", "Point 2 with a number", "Why this matters"],
       "source": "Source name",
       "accent_color": "#06b6d4"
     },
@@ -190,7 +106,7 @@ Return a JSON response with this exact structure (no markdown, pure JSON):
   ]
 }
 
-Create 4-8 slides. First slide is always cover, last is always CTA. Middle slides are news items. Max 4 bullet points per news slide. No emojis anywhere.`,
+Create 5-8 slides. First is cover, last is CTA. Middle slides are news.`,
           },
         ],
         tools: [
@@ -234,21 +150,22 @@ Create 4-8 slides. First slide is always cover, last is always CTA. Middle slide
     if (!aiResp.ok) {
       if (aiResp.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (aiResp.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const errText = await aiResp.text();
+      console.error("AI gateway error:", aiResp.status, errText);
       throw new Error(`AI gateway error ${aiResp.status}: ${errText}`);
     }
 
     const aiData = await aiResp.json();
+    console.log("AI response received, finish_reason:", aiData.choices?.[0]?.finish_reason);
+
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     let postContent;
 
@@ -260,45 +177,12 @@ Create 4-8 slides. First slide is always cover, last is always CTA. Middle slide
       if (jsonMatch) {
         postContent = JSON.parse(jsonMatch[0]);
       } else {
+        console.error("Could not parse AI response:", content.slice(0, 500));
         throw new Error("Failed to parse AI response");
       }
     }
 
-    // Step 3: Try to find relevant images for ALL slides using Firecrawl search
-    for (const slide of postContent.slides) {
-      const searchQuery =
-        slide.type === "cover"
-          ? `AI artificial intelligence technology futuristic 2026`
-          : slide.type === "cta"
-            ? `AI community technology network abstract`
-            : `${slide.headline} AI technology`;
-
-      try {
-        const imgSearch = await fetch("https://api.firecrawl.dev/v1/search", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${FIRECRAWL_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            query: searchQuery,
-            limit: 3,
-            scrapeOptions: { formats: ["links"] },
-          }),
-        });
-        const imgData = await imgSearch.json();
-        for (const result of imgData.data || []) {
-          if (result?.metadata?.ogImage) {
-            slide.image_url = result.metadata.ogImage;
-            break;
-          }
-        }
-      } catch {
-        // Skip image search errors silently
-      }
-    }
-
-    // Step 4: Save the post
+    // Save the post
     const { data: post, error: insertError } = await supabase
       .from("ai_posts")
       .insert({
@@ -307,13 +191,15 @@ Create 4-8 slides. First slide is always cover, last is always CTA. Middle slide
         summary: postContent.summary,
         slides: postContent.slides,
         hashtags: postContent.hashtags,
-        source_urls: sourceUrls.slice(0, 10),
+        source_urls: [],
         status: "pending",
       })
       .select()
       .single();
 
     if (insertError) throw insertError;
+
+    console.log("Post created successfully:", post.id);
 
     return new Response(JSON.stringify({ success: true, post }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
