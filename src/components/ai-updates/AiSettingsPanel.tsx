@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { X, Save, Plus, Trash2, Settings } from "lucide-react";
+import { X, Save, Plus, Trash2, Settings, Instagram, Eye, EyeOff } from "lucide-react";
 import { useAiSettings, useUpdateAiSettings } from "@/hooks/useAiSettings";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AiSettingsPanelProps {
   onClose: () => void;
@@ -30,6 +31,10 @@ const AiSettingsPanel = ({ onClose }: AiSettingsPanelProps) => {
   });
 
   const [newSource, setNewSource] = useState("");
+  const [igToken, setIgToken] = useState("");
+  const [igAccountId, setIgAccountId] = useState("");
+  const [showToken, setShowToken] = useState(false);
+  const [savingIg, setSavingIg] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -50,6 +55,31 @@ const AiSettingsPanel = ({ onClose }: AiSettingsPanelProps) => {
     toast.success("Settings saved");
   };
 
+  const handleSaveInstagram = async () => {
+    if (!igToken.trim() && !igAccountId.trim()) {
+      toast.error("Please enter at least one Instagram credential");
+      return;
+    }
+    setSavingIg(true);
+    try {
+      // Save via edge function that sets secrets
+      const { error } = await supabase.functions.invoke("save-instagram-config", {
+        body: {
+          access_token: igToken.trim() || undefined,
+          account_id: igAccountId.trim() || undefined,
+        },
+      });
+      if (error) throw error;
+      toast.success("Instagram credentials saved");
+      setIgToken("");
+      setIgAccountId("");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save Instagram config");
+    } finally {
+      setSavingIg(false);
+    }
+  };
+
   const addSource = () => {
     if (!newSource.trim()) return;
     setForm((p) => ({ ...p, news_sources: [...p.news_sources, newSource.trim()] }));
@@ -61,6 +91,8 @@ const AiSettingsPanel = ({ onClose }: AiSettingsPanelProps) => {
   };
 
   if (isLoading) return null;
+
+  const fontFamily = "'Montserrat Alternates', sans-serif";
 
   return (
     <>
@@ -77,11 +109,12 @@ const AiSettingsPanel = ({ onClose }: AiSettingsPanelProps) => {
         exit={{ x: "100%" }}
         transition={{ type: "spring", damping: 30, stiffness: 300 }}
         className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg bg-background border-l border-border overflow-y-auto"
+        style={{ fontFamily }}
       >
         <div className="sticky top-0 bg-background/80 backdrop-blur-lg border-b border-border px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">AI Settings</h2>
+            <h2 className="text-lg font-semibold">Settings</h2>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -98,6 +131,51 @@ const AiSettingsPanel = ({ onClose }: AiSettingsPanelProps) => {
         </div>
 
         <div className="p-6 space-y-8">
+          {/* Instagram Integration */}
+          <section className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Instagram className="w-4 h-4 text-pink-500" />
+              <h3 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">Instagram Integration</h3>
+            </div>
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              Connect your Instagram Business account to auto-publish posts. You need a Meta App with Instagram Graph API access.
+            </p>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Access Token</label>
+              <div className="relative">
+                <input
+                  type={showToken ? "text" : "password"}
+                  value={igToken}
+                  onChange={(e) => setIgToken(e.target.value)}
+                  className="w-full bg-muted/50 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring pr-10 font-mono"
+                  placeholder="EAAxxxxxxx..."
+                />
+                <button
+                  onClick={() => setShowToken(!showToken)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                >
+                  {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground">Business Account ID</label>
+              <input
+                value={igAccountId}
+                onChange={(e) => setIgAccountId(e.target.value)}
+                className="w-full bg-muted/50 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-1 focus:ring-ring font-mono"
+                placeholder="17841400xxxxxxx"
+              />
+            </div>
+            <button
+              onClick={handleSaveInstagram}
+              disabled={savingIg || (!igToken.trim() && !igAccountId.trim())}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              <Save className="w-3.5 h-3.5" /> {savingIg ? "Saving..." : "Save Instagram Config"}
+            </button>
+          </section>
+
           {/* Access Control */}
           <section className="space-y-3">
             <h3 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">Access Control</h3>
@@ -170,7 +248,7 @@ const AiSettingsPanel = ({ onClose }: AiSettingsPanelProps) => {
           {/* News Sources */}
           <section className="space-y-3">
             <h3 className="text-xs uppercase tracking-[0.2em] text-muted-foreground font-medium">News Sources</h3>
-            <p className="text-[10px] text-muted-foreground">Domains to scrape for AI/tech news</p>
+            <p className="text-[10px] text-muted-foreground">Topics/domains for AI to focus on</p>
             <div className="space-y-2">
               {form.news_sources.map((s, i) => (
                 <div key={i} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
@@ -185,7 +263,7 @@ const AiSettingsPanel = ({ onClose }: AiSettingsPanelProps) => {
                   value={newSource}
                   onChange={(e) => setNewSource(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addSource()}
-                  placeholder="blog.google.com"
+                  placeholder="e.g. robotics, LLM research"
                   className="flex-1 bg-muted/50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
                 />
                 <button
