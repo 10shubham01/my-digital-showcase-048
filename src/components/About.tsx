@@ -68,11 +68,11 @@ const About = () => {
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          <p className="text-base font-body text-muted-foreground leading-relaxed mb-6">
+          <p className="font-body text-muted-foreground leading-relaxed mb-6 text-6xl">
             Senior Front-End Engineer with <span className="text-accent-cyan font-mono">{yearsOfExperience}+</span> years of hands-on experience
             architecting and shipping production-grade web applications at scale.
           </p>
-          <p className="text-base font-body text-muted-foreground leading-relaxed mb-6">
+          <p className="font-body text-muted-foreground leading-relaxed mb-6 text-6xl">
             I lead front-end teams and drive technical decisions — from component architecture to 
             CI/CD pipelines. My focus is on building interfaces that are <span className="text-accent-pop">performant</span>, <span className="text-accent-blue">accessible</span>, and <span className="text-accent-green">delightful</span> to use.
           </p>
