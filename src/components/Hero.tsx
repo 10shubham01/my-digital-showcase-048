@@ -18,8 +18,8 @@ const Hero = () => {
         transition={{ duration: 0.8, delay: 0.2 }}
         className="relative flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4"
       >
-        <p className="text-[10px] sm:text-xs font-mono text-muted-foreground tracking-[0.2em] sm:tracking-[0.3em] uppercase">
-          Full-Stack Developer — {currentYear}
+        <p className="text-[10px] font-mono text-muted-foreground tracking-[0.2em] sm:tracking-[0.3em] uppercase text-justify rounded-full shadow-md sm:text-8xl">
+          FULL-STACK DEVELOPER — {currentYear}
         </p>
         <motion.span
           animate={{ boxShadow: ["0 0 0 0 hsl(152 69% 45% / 0.4)", "0 0 0 8px hsl(152 69% 45% / 0)", "0 0 0 0 hsl(152 69% 45% / 0)"] }}
@@ -56,7 +56,7 @@ const Hero = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 1 }}
-              className="hidden md:block text-sm font-body text-muted-foreground max-w-xs text-right leading-relaxed"
+              className="hidden md:block font-body text-muted-foreground max-w-xs text-right leading-relaxed text-9xl"
             >
               Building high-performing applications with modern frameworks. One pixel at a time.
             </motion.p>
